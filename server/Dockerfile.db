@@ -1,0 +1,10 @@
+FROM ankane/pgvector:v0.5.1
+
+COPY pl_pl.affix /usr/share/postgresql/$PG_MAJOR/tsearch_data/
+COPY pl_pl.dict /usr/share/postgresql/$PG_MAJOR/tsearch_data/
+COPY polish.stop /usr/share/postgresql/$PG_MAJOR/tsearch_data/
+
+RUN chown postgres:postgres /usr/share/postgresql/$PG_MAJOR/tsearch_data/pl_pl.* && \
+    chown postgres:postgres /usr/share/postgresql/$PG_MAJOR/tsearch_data/polish.stop && \
+    chmod 644 /usr/share/postgresql/$PG_MAJOR/tsearch_data/pl_pl.* && \
+    chmod 644 /usr/share/postgresql/$PG_MAJOR/tsearch_data/polish.stop

@@ -1,0 +1,78 @@
+services:
+  # PostreSQL with PGVector and Polish Hunspell dictionaries
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: postgres_db
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recipes_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recipes}
+      POSTGRES_DB: ${POSTGRES_DB:-recipes}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-recipes_user} -d ${POSTGRES_DB:-recipes}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Messages Broker Redis
+  redis:
+    image: redis:7-alpine
+    container_name: redis_broker
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Main application (FastAPI)
+  web:
+    build: .
+    container_name: python_app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+      - "5678:5678" # debugpy
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-recipes_user}:${POSTGRES_PASSWORD:-recipes}@db:5432/${POSTGRES_DB:-recipes}
+      - REDIS_URL=redis://redis:6379/0
+      - TESSERACT_PATH=tesseract
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery worker
+  worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A app.workers.celery_app worker -Q ocr --loglevel=info
+    ports:
+      - "5679:5679" # debugpy
+    volumes:
+      - .:/app
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-recipes_user}:${POSTGRES_PASSWORD:-recipes}@db:5432/${POSTGRES_DB:-recipes}
+      - REDIS_URL=redis://redis:6379/0
+      - TESSERACT_PATH=tesseract
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
