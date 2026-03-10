@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
 
 class RecipeImageOut(BaseModel):
@@ -14,7 +14,8 @@ class RecipeOut(BaseModel):
     id: int
     title: Optional[str]
     structured: Optional[dict]
-    images: List[RecipeImageOut]
+    images: list[RecipeImageOut]
+    status: str
 
     class Config:
         from_attributes = True
@@ -26,7 +27,7 @@ class RecipeUpdate(BaseModel):
 
 
 class TagRequest(BaseModel):
-    tags: List[str]
+    tags: list[str]
 
 
 class RecipeListOut(BaseModel):
@@ -34,6 +35,7 @@ class RecipeListOut(BaseModel):
     title: str
     thumbnail_url: str
     short_text: str
+    status: str
 
     class Config:
         from_attributes = True
