@@ -1,8 +1,8 @@
--- 1. Podstawowe rozszerzenia
+-- 1. Rozszerzenia
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 -- 2. Konfiguracja Full Text Search dla języka polskiego
--- PostgreSQL automatycznie doda rozszerzenia .dict i .affix do nazw podanych poniżej
+-- Wymaga plików pl_pl.dict i pl_pl.affix w folderze tsearch_data Postgresa
 CREATE TEXT SEARCH DICTIONARY public.polish_hunspell (
     TEMPLATE = pg_catalog.ispell,
     dictfile = 'pl_pl', 
@@ -24,6 +24,8 @@ ALTER TEXT SEARCH CONFIGURATION public.polish
     WITH simple;
 
 -- 3. Struktura tabel
+
+-- Główna tabela przepisów
 CREATE TABLE public.recipes (
     id SERIAL PRIMARY KEY,
     title text,
@@ -37,21 +39,26 @@ CREATE TABLE public.recipes (
     status text DEFAULT 'processing'::text
 );
 
-CREATE TABLE public.recipe_embeddings (
-    recipe_id integer NOT NULL PRIMARY KEY REFERENCES public.recipes(id) ON DELETE CASCADE,
-    embedding public.vector(768)
-);
-
+-- Tabela obrazów
 CREATE TABLE public.recipe_images (
     id SERIAL PRIMARY KEY,
     recipe_id integer REFERENCES public.recipes(id) ON DELETE CASCADE,
     file_path text NOT NULL,
     image_type text,
-    created_at timestamp without time zone DEFAULT now()
+    created_at timestamp without time zone DEFAULT now(),
+    page_number integer DEFAULT 1
 );
 
--- Trigger do automatycznego generowania wektora ułatwiającego wyszukiwanie (Full Text Search)
-CREATE FUNCTION public.recipes_search_trigger() RETURNS trigger AS $$
+-- Tabela embeddingów AI
+CREATE TABLE public.recipe_embeddings (
+    recipe_id integer NOT NULL PRIMARY KEY REFERENCES public.recipes(id) ON DELETE CASCADE,
+    embedding public.vector(768)
+);
+
+-- 4. Funkcje i Triggery
+
+-- Trigger do automatycznego generowania wektora ułatwiającego wyszukiwanie
+CREATE OR REPLACE FUNCTION public.recipes_search_trigger() RETURNS trigger AS $$
 BEGIN
   NEW.search_vector :=
      setweight(to_tsvector('public.polish', coalesce(NEW.title, '')), 'A') ||
@@ -61,14 +68,14 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE
-    ON public.recipes FOR EACH ROW EXECUTE FUNCTION public.recipes_search_trigger();
+CREATE TRIGGER tsvectorupdate 
+    BEFORE INSERT OR UPDATE ON public.recipes 
+    FOR EACH ROW EXECUTE FUNCTION public.recipes_search_trigger();
 
 -- Indeks GIN dla wyszukiwania pełnotekstowego
 CREATE INDEX idx_search ON public.recipes USING gin (search_vector);
 
--- 4. Uprawnienia
+-- 5. Uprawnienia
+-- Zapewnia dostęp użytkownikowi aplikacji do nowo utworzonych obiektów
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO recipes_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO recipes_user;
-
-SELECT pg_catalog.setval('public.recipes_id_seq', 20, true);
