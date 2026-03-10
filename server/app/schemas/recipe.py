@@ -41,3 +41,13 @@ class RecipeListOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TagOut(BaseModel):
+    id: int
+    name: str
+    recipe_count: int
+
+    class Config:
+        from_attributes = True
+

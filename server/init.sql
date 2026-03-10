@@ -2,7 +2,6 @@
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 -- 2. Konfiguracja Full Text Search dla języka polskiego
--- Wymaga plików pl_pl.dict i pl_pl.affix w folderze tsearch_data Postgresa
 CREATE TEXT SEARCH DICTIONARY public.polish_hunspell (
     TEMPLATE = pg_catalog.ispell,
     dictfile = 'pl_pl', 
@@ -14,7 +13,6 @@ CREATE TEXT SEARCH CONFIGURATION public.polish (
     PARSER = pg_catalog."default" 
 );
 
--- Mapowanie typów wyrazów na słownik Hunspell
 ALTER TEXT SEARCH CONFIGURATION public.polish
     ADD MAPPING FOR asciiword, word, hword_part, hword_asciipart, asciihword, hword
     WITH public.polish_hunspell, simple;
@@ -25,7 +23,6 @@ ALTER TEXT SEARCH CONFIGURATION public.polish
 
 -- 3. Struktura tabel
 
--- Główna tabela przepisów
 CREATE TABLE public.recipes (
     id SERIAL PRIMARY KEY,
     title text,
@@ -39,7 +36,19 @@ CREATE TABLE public.recipes (
     status text DEFAULT 'processing'::text
 );
 
--- Tabela obrazów
+-- Tabela tagów
+CREATE TABLE public.tags (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+-- Tabela pośrednicząca dla tagów (wiele-do-wielu)
+CREATE TABLE public.recipe_tags (
+    recipe_id INTEGER REFERENCES public.recipes(id) ON DELETE CASCADE,
+    tag_id INTEGER REFERENCES public.tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (recipe_id, tag_id)
+);
+
 CREATE TABLE public.recipe_images (
     id SERIAL PRIMARY KEY,
     recipe_id integer REFERENCES public.recipes(id) ON DELETE CASCADE,
@@ -49,7 +58,6 @@ CREATE TABLE public.recipe_images (
     page_number integer DEFAULT 1
 );
 
--- Tabela embeddingów AI
 CREATE TABLE public.recipe_embeddings (
     recipe_id integer NOT NULL PRIMARY KEY REFERENCES public.recipes(id) ON DELETE CASCADE,
     embedding public.vector(768)
@@ -57,7 +65,6 @@ CREATE TABLE public.recipe_embeddings (
 
 -- 4. Funkcje i Triggery
 
--- Trigger do automatycznego generowania wektora ułatwiającego wyszukiwanie
 CREATE OR REPLACE FUNCTION public.recipes_search_trigger() RETURNS trigger AS $$
 BEGIN
   NEW.search_vector :=
@@ -72,10 +79,8 @@ CREATE TRIGGER tsvectorupdate
     BEFORE INSERT OR UPDATE ON public.recipes 
     FOR EACH ROW EXECUTE FUNCTION public.recipes_search_trigger();
 
--- Indeks GIN dla wyszukiwania pełnotekstowego
 CREATE INDEX idx_search ON public.recipes USING gin (search_vector);
 
 -- 5. Uprawnienia
--- Zapewnia dostęp użytkownikowi aplikacji do nowo utworzonych obiektów
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO recipes_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO recipes_user;

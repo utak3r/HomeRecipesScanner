@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.services.storage import save_upload
 from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
+from app.db.models.tag import Tag
 from app.workers.ocr_tasks import process_recipe
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
@@ -165,3 +166,36 @@ async def get_status(recipe_id: int, db: AsyncSession = Depends(get_db)):
     recipe = await db.get(Recipe, recipe_id)
     return {"status": recipe.status}
 
+@router.get("/by-tag/{tag_name}", response_model=List[RecipeListOut])
+async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(Recipe)
+        .join(Recipe.tags)
+        .where(func.lower(Tag.name) == tag_name.lower())
+        .options(selectinload(Recipe.images))
+        .order_by(Recipe.created_at.desc())
+    )
+    
+    result = await db.execute(stmt)
+    recipes = result.scalars().all()
+    
+    response = []
+    for r in recipes:
+        if r.images:
+            img_url = r.images[0].url
+            thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1) if img_url.startswith("/uploads/") else img_url
+        else:
+            thumbnail_url = "/no_image_thumbnail.png"
+        
+        text_source = r.cleaned_text or r.raw_text or ""
+        words = text_source.split()
+        short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
+        
+        response.append({
+            "id": r.id,
+            "title": r.title or "Bez tytułu",
+            "thumbnail_url": thumbnail_url,
+            "short_text": short_text
+        })
+    
+    return response

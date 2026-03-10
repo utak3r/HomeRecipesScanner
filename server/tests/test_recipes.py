@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from app.main import app
 from app.api.deps import get_db
 from app.db.models.recipe import Recipe
+from app.db.models.tag import Tag
 
 # --- Mocking Fixtures ---
 
@@ -161,6 +162,72 @@ async def test_search_recipes(async_client, mock_db_session):
     assert data[1] == {"id": 2, "title": "Ciasto czekoladowe"}
     
     mock_db_session.execute.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_list_recipes_by_tag_success(async_client, mock_db_session):
+    tag_name = "Obiad"
+    recipe = Recipe(
+        id=10, 
+        title="Kurczak w sosie", 
+        cleaned_text="Instrukcja gotowania obiadu...",
+        raw_text=None
+    )
+    recipe.images = []
+
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = [recipe]
+    mock_db_session.execute.return_value = mock_result
+
+    response = await async_client.get(f"/recipes/by-tag/{tag_name}")
+
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert len(data) == 1
+    assert data[0]["id"] == 10
+    assert data[0]["title"] == "Kurczak w sosie"
+    assert data[0]["thumbnail_url"] == "/no_image_thumbnail.png"
+    assert data[0]["short_text"] == "Instrukcja gotowania obiadu..."
+
+@pytest.mark.asyncio
+async def test_list_recipes_by_tag_empty(async_client, mock_db_session):
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = []
+    mock_db_session.execute.return_value = mock_result
+
+    response = await async_client.get("/recipes/by-tag/NieistniejacyTag")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+@pytest.mark.asyncio
+async def test_remove_tag_success(async_client, mock_db_session):
+    tag_to_remove = Tag(id=5, name="Szybkie")
+    fake_recipe = Recipe(id=1, title="Test", tags=[tag_to_remove])
+    
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = fake_recipe
+    mock_db_session.execute.return_value = mock_result
+
+    response = await async_client.delete("/tags/1/5")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "removed"}
+    assert len(fake_recipe.tags) == 0
+    mock_db_session.commit.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_remove_tag_not_associated(async_client, mock_db_session):
+    fake_recipe = Recipe(id=1, title="Test", tags=[])
+    
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = fake_recipe
+    mock_db_session.execute.return_value = mock_result
+
+    response = await async_client.delete("/tags/1/99")
+
+    assert response.status_code == 404
+    assert "Tag not associated" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_update_recipe_not_found(async_client, mock_db_session):
