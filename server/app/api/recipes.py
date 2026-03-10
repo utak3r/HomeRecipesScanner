@@ -32,7 +32,7 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
         else:
             thumbnail_url = "/static/no_image_thumbnail.png"
         
-        text_source = r.cleaned_text or r.raw_text or ""
+        text_source = r.full_text or ""
         words = text_source.split()
         short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
         
@@ -187,7 +187,7 @@ async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db))
         else:
             thumbnail_url = "/static/no_image_thumbnail.png"
         
-        text_source = r.cleaned_text or r.raw_text or ""
+        text_source = r.full_text or ""
         words = text_source.split()
         short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
         

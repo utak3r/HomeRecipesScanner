@@ -26,8 +26,7 @@ ALTER TEXT SEARCH CONFIGURATION public.polish
 CREATE TABLE public.recipes (
     id SERIAL PRIMARY KEY,
     title text,
-    raw_text text,
-    cleaned_text text,
+    full_text text,
     structured jsonb,
     language text DEFAULT 'pl'::text,
     created_at timestamp without time zone DEFAULT now(),
@@ -65,12 +64,24 @@ CREATE TABLE public.recipe_embeddings (
 
 -- 4. Funkcje i Triggery
 
+CREATE OR REPLACE FUNCTION public.jsonb_to_text(data jsonb) RETURNS text AS $$
+DECLARE
+  result text;
+BEGIN
+  SELECT string_agg(v #>> '{}', ' ') INTO result
+  FROM jsonb_path_query(data, '$.**') v
+  WHERE jsonb_typeof(v) NOT IN ('object', 'array');
+  RETURN coalesce(result, '');
+END
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION public.recipes_search_trigger() RETURNS trigger AS $$
 BEGIN
+  NEW.full_text := public.jsonb_to_text(NEW.structured);
+
   NEW.search_vector :=
      setweight(to_tsvector('public.polish', coalesce(NEW.title, '')), 'A') ||
-     setweight(to_tsvector('public.polish', coalesce(NEW.cleaned_text, '')), 'C') ||
-     setweight(to_tsvector('public.polish', coalesce(NEW.raw_text, '')), 'D');
+     setweight(to_tsvector('public.polish', coalesce(NEW.full_text, '')), 'B');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;

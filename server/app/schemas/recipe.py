@@ -13,8 +13,6 @@ class RecipeImageOut(BaseModel):
 class RecipeOut(BaseModel):
     id: int
     title: Optional[str]
-    raw_text: Optional[str]
-    cleaned_text: Optional[str]
     structured: Optional[dict]
     images: List[RecipeImageOut]
 
@@ -24,9 +22,7 @@ class RecipeOut(BaseModel):
 
 class RecipeUpdate(BaseModel):
     title: Optional[str] = None
-    cleaned_text: Optional[str] = None
     structured: Optional[dict] = None
-    images: Optional[List[RecipeImageOut]] = None
 
 
 class TagRequest(BaseModel):
