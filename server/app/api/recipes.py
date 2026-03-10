@@ -45,26 +45,33 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/upload")
-async def upload_recipe(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
-    path = await save_upload(file)
+async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = Depends(get_db)):
 
-    recipe = Recipe()
+    recipe = Recipe(status="processing")
     db.add(recipe)
     await db.flush()
 
-    image = RecipeImage(
-        recipe_id=recipe.id,
-        file_path=path,
-        image_type="scan"
-    )
-    db.add(image)
+    file_paths = []
+
+    for index, file in enumerate(files, start=1):
+        path = await save_upload(file)
+        file_paths.append(path)
+
+        image = RecipeImage(
+            recipe_id=recipe.id,
+            file_path=path,
+            image_type="scan",
+            page_number=index
+        )
+        db.add(image)
 
     await db.commit()
 
-    process_recipe.delay(recipe.id, path)
+    process_recipe.delay(recipe.id, file_paths)
 
     return {
         "recipe_id": recipe.id,
+        "files_count": len(file_paths),
         "status": "processing"
     }
 

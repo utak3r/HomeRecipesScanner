@@ -105,10 +105,10 @@ SUROWY TEKST OCR:
 
 
 
-def ai_image_to_json(img: np.ndarray) -> dict:
+def ai_image_to_json(images_list: list[np.ndarray]) -> dict:
     prompt = """
 Jesteś systemem eksperckim do analizy odręcznych przepisów kulinarnych.
-Twoim zadaniem jest odczytać przepis z załączonego obrazka i OD RAZU sformatować go jako JSON.
+Twoim zadaniem jest odczytać przepis z załączonych obrazków i OD RAZU sformatować go jako jeden spójny JSON.
 
 Zasady:
 - Zignoruj skreślenia i błędy, wyciągnij logiczny sens przepisu.
@@ -127,7 +127,7 @@ Wymagana struktura:
 }
 """
     
-    image = Image.fromarray(img)
+    images = [Image.fromarray(img) for img in images_list]
     client = get_gemini_client()
     
     config = types.GenerateContentConfig(
@@ -138,7 +138,7 @@ Wymagana struktura:
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[prompt, image],
+            contents=[prompt, *images],
             config=config
         )
 
@@ -165,10 +165,10 @@ Wymagana struktura:
         raise RecipeAIError(f"Unexpected error while communicating with AI: {str(e)}")
 
 
-def ai_handwritten_text_recognition(image_path: str) -> str:
-    text = ""
-    img = heavy_image_preprocessing_for_ocr(image_path)
-    # cv2.imwrite("img_preprocessed.jpg", img)
-    response_json = ai_image_to_json(img)
-
-    return response_json
+def ai_handwritten_text_recognition(image_paths: list[str]) -> str:
+    processed_images = []
+    for path in image_paths:
+        img = heavy_image_preprocessing_for_ocr(path)
+        processed_images.append(img)
+    
+    return ai_image_to_json(processed_images)

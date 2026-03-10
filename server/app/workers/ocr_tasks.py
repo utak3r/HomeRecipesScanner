@@ -1,37 +1,50 @@
 import os
 import asyncio
 from celery.utils.log import get_task_logger
+from sqlalchemy import select
 
 from app.workers.celery_app import celery_app
 from app.db.session import AsyncSessionLocal, engine
 from app.db.models.recipe import Recipe
+from app.db.models.image import RecipeImage
 from app.workers.ocr_pipeline import run_ocr_pipeline
 
 logger = get_task_logger(__name__)
 
 @celery_app.task
-def process_recipe(recipe_id: int, image_path: str):
-    logger.info(f'celery_app.task calling process_recipe with params {recipe_id}, {image_path}')
-    asyncio.run(_pipeline(recipe_id, image_path))
+def process_recipe(recipe_id: int, file_paths: list[str]):
+    logger.info(f'celery_app.task calling process_recipe for recipe {recipe_id} with {len(file_paths)} files')
+    asyncio.run(_pipeline(recipe_id, file_paths))
 
-async def _pipeline(recipe_id: int, image_path: str):
+async def _pipeline(recipe_id: int, file_paths: list[str]):
     try:
         async with AsyncSessionLocal() as db:
             try:
                 recipe = await db.get(Recipe, recipe_id)
-
                 if not recipe:
                     raise ValueError(f"Recipe {recipe_id} not found")
 
-                if not os.path.exists(image_path):
-                    raise FileNotFoundError(f"Image not found: {image_path}")
+                # to be sure OCR gets pages in proper order,
+                # we're getting them from databse, sorted by page number
+                result = await db.execute(
+                    select(RecipeImage)
+                    .where(RecipeImage.recipe_id == recipe_id)
+                    .order_by(RecipeImage.page_number.asc())
+                )
+                images = result.scalars().all()
+                if not images:
+                    raise ValueError(f"No images found for recipe {recipe_id}")
+                sorted_paths = [img.file_path for img in images]
 
-                logger.info(f'Processing recipe {recipe_id} with an image {image_path}')
+                for path in sorted_paths:
+                    if not os.path.exists(path):
+                        raise FileNotFoundError(f"Image not found: {path}")
 
+                logger.info(f'Processing recipe {recipe_id} with {len(sorted_paths)} files')
                 recipe.status = "processing"
                 await db.commit()
 
-                result = run_ocr_pipeline(image_path)
+                result = run_ocr_pipeline(sorted_paths)
 
                 if "error" in result:
                     raise RuntimeError(f"Krytyczny błąd systemu OCR: {result['error']}")

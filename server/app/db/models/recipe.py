@@ -41,7 +41,8 @@ class Recipe(Base):
     images = relationship(
         "RecipeImage",
         back_populates="recipe",
-        cascade="all, delete"
+        cascade="all, delete",
+        order_by="RecipeImage.page_number"
     )
 
     tags = relationship(

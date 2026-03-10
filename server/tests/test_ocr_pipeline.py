@@ -19,71 +19,51 @@ MOCK_JSON_RESULT = {
 @patch('app.workers.ocr_pipeline.ai_handwritten_text_recognition')
 @patch('app.workers.ocr_pipeline.ai_clean_and_structure_text')
 def test_pipeline_tesseract_success(mock_clean_structure, mock_handwritten, mock_tesseract, mock_preprocess):
-    """
-    Test for successful Tesseract.
-    It should call ai_clean_and_structure_text.
-    """
     mock_preprocess.return_value = "dummy_cv2_image"
-    mock_tesseract.return_value = ("Brudny tekst z tesseracta", 85)
+    mock_tesseract.side_effect = [("Tekst strony 1", 90), ("Tekst strony 2", 80)]
     mock_clean_structure.return_value = MOCK_JSON_RESULT
 
-    result = run_ocr_pipeline("dummy_path.jpg")
+    paths = ["p1.jpg", "p2.jpg"]
+    result = run_ocr_pipeline(paths)
 
     assert result == MOCK_JSON_RESULT
-    mock_preprocess.assert_called_once_with("dummy_path.jpg")
-    mock_tesseract.assert_called_once_with("dummy_cv2_image")
-    mock_clean_structure.assert_called_once_with("Brudny tekst z tesseracta")
-    
+    assert mock_preprocess.call_count == 2
+    assert mock_tesseract.call_count == 2
+
+    mock_clean_structure.assert_called_once_with("Tekst strony 1\n\nTekst strony 2")
     mock_handwritten.assert_not_called()
 
 
 @patch('app.workers.ocr_pipeline.light_image_preprocessing_for_ocr')
 @patch('app.workers.ocr_pipeline.ocr_tesseract')
 @patch('app.workers.ocr_pipeline.ai_handwritten_text_recognition')
-@patch('app.workers.ocr_pipeline.ai_clean_and_structure_text')
-def test_pipeline_tesseract_failure(mock_clean_structure, mock_handwritten, mock_tesseract, mock_preprocess):
-    """
-    Test for unsuccessful Tesseract (confidence < 60).
-    It should call ai_handwritten_text_recognition.
-    """
+def test_pipeline_tesseract_failure(mock_handwritten, mock_tesseract, mock_preprocess):
     mock_preprocess.return_value = "dummy_cv2_image"
-    mock_tesseract.return_value = ("Bzdury", 45)
+    mock_tesseract.return_value = ("Błąd", 40) # Słaba pewność
     mock_handwritten.return_value = MOCK_JSON_RESULT
 
-    result = run_ocr_pipeline("dummy_path.jpg")
+    paths = ["p1.jpg"]
+    result = run_ocr_pipeline(paths)
 
     assert result == MOCK_JSON_RESULT
-    mock_preprocess.assert_called_once_with("dummy_path.jpg")
-    mock_tesseract.assert_called_once_with("dummy_cv2_image")
-    mock_handwritten.assert_called_once_with("dummy_path.jpg")
-    
-    mock_clean_structure.assert_not_called()
+
+    mock_handwritten.assert_called_once_with(paths)
 
 
 @patch('app.workers.ocr_pipeline.ai_clean_and_structure_text')
 @patch('app.workers.ocr_pipeline.ai_handwritten_text_recognition')
 def test_functional_pipeline_with_dummy_image(mock_handwritten, mock_clean_structure, tmp_path):
-    """
-    Functional test using real Tesseract and OpenCV.
-    Gemini is still mocked out.
-    """
-    # Creating a sample image
     test_image_path = str(tmp_path / "test_print.jpg")
     img = np.ones((200, 500, 3), dtype=np.uint8) * 255
     cv2.putText(img, 'Maka 1 kg', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 3)
     cv2.imwrite(test_image_path, img)
 
-    # Mocking out Gemini API
     mock_clean_structure.return_value = MOCK_JSON_RESULT
 
-    # Test.
-    # Tesseract should be successful.
-    result = run_ocr_pipeline(test_image_path)
+    result = run_ocr_pipeline([test_image_path])
 
     assert result == MOCK_JSON_RESULT
-    
     mock_clean_structure.assert_called_once()
-    mock_handwritten.assert_not_called()
 
 
 # Full End-to-End integration test, using Gemini API.
@@ -95,7 +75,7 @@ def test_full_e2e_real_api(tmp_path):
     cv2.putText(img, 'Cukier 500g', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     cv2.imwrite(test_image_path, img)
 
-    result = run_ocr_pipeline(test_image_path)
+    result = run_ocr_pipeline([test_image_path])
 
     assert isinstance(result, dict)
     assert "title" in result

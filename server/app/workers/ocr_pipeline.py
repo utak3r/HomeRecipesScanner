@@ -32,17 +32,25 @@ def ocr_tesseract(img):
 Main OCR pipeline
 Returns a structured text
 """
-def run_ocr_pipeline(image_path: str):
+def run_ocr_pipeline(image_paths: list[str]):
     try:
         # Try with Tesseract
-        img = light_image_preprocessing_for_ocr(image_path)
-        tess_text, confidence = ocr_tesseract(img)
+        all_tess_texts = []
+        all_confidences = []
 
-        if confidence < 60:
-            # Tesseract failed, go with Google Gemini
-            final_result = ai_handwritten_text_recognition(image_path)
+        for path in image_paths:
+            img = light_image_preprocessing_for_ocr(path)
+            text, conf = ocr_tesseract(img)
+            all_tess_texts.append(text)
+            all_confidences.append(conf)
+
+        avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0
+
+        if avg_confidence < 60:
+            final_result = ai_handwritten_text_recognition(image_paths)
         else:
-            final_result = ai_clean_and_structure_text(tess_text)
+            combined_text = "\n\n".join(all_tess_texts)
+            final_result = ai_clean_and_structure_text(combined_text)
 
         return final_result
 

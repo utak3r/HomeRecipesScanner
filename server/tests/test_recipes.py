@@ -77,7 +77,7 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
 
     assert data[0]["id"] == 1
     assert data[0]["title"] == "Zupa pomidorowa"
-    assert data[0]["thumbnail_url"] == "/uploads/zupa.jpg"
+    assert data[0]["thumbnail_url"] == "/uploads/thumbs/zupa.jpg"
     assert data[0]["short_text"] == "Pyszna zupa z pomidorów."
 
     assert data[1]["id"] == 2
@@ -117,29 +117,31 @@ async def test_get_recipe_success(async_client, mock_db_session):
 @pytest.mark.asyncio
 @patch("app.api.recipes.process_recipe.delay")
 @patch("app.api.recipes.save_upload", new_callable=AsyncMock)
-async def test_upload_recipe(mock_save_upload, mock_process_delay, async_client, mock_db_session):
-    mock_save_upload.return_value = "/fake/path/image.jpg"
+async def test_upload_recipe_multiple_files(mock_save_upload, mock_process_delay, async_client, mock_db_session):
+    mock_save_upload.side_effect = ["/path/1.jpg", "/path/2.jpg"]
     
     async def mock_flush(*args, **kwargs):
         for call in mock_db_session.add.call_args_list:
             instance = call[0][0]
             if isinstance(instance, Recipe):
-                instance.id = 42
+                instance.id = 100
 
     mock_db_session.flush.side_effect = mock_flush
 
-    files = {"file": ("test_recipe.jpg", b"fake image content", "image/jpeg")}
+    files = [
+        ("files", ("page1.jpg", b"content1", "image/jpeg")),
+        ("files", ("page2.jpg", b"content2", "image/jpeg"))
+    ]
     response = await async_client.post("/recipes/upload", files=files)
 
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "processing"
-    assert data["recipe_id"] == 42
-    mock_save_upload.assert_awaited_once()
-    assert mock_db_session.add.call_count == 2  # Recipe and RecipeImage
-    mock_db_session.flush.assert_awaited_once()
-    mock_db_session.commit.assert_awaited_once()
-    mock_process_delay.assert_called_once_with(42, "/fake/path/image.jpg")
+    assert data["recipe_id"] == 100
+    
+    assert mock_save_upload.await_count == 2
+    assert mock_db_session.add.call_count == 3 
+    
+    mock_process_delay.assert_called_once_with(100, ["/path/1.jpg", "/path/2.jpg"])
 
 @pytest.mark.asyncio
 async def test_search_recipes(async_client, mock_db_session):

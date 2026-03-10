@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, DateTime, func
+from sqlalchemy import ForeignKey, String, DateTime, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from datetime import datetime
@@ -15,6 +15,8 @@ class RecipeImage(Base):
     file_path: Mapped[str] = mapped_column(String)
 
     image_type: Mapped[str] = mapped_column(String)
+
+    page_number: Mapped[int] = mapped_column(Integer, default=1)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
