@@ -35,12 +35,14 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
         text_source = r.full_text or ""
         words = text_source.split()
         short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
+        status = r.status
         
         response.append({
             "id": r.id,
             "title": r.title or "Bez tytułu",
             "thumbnail_url": thumbnail_url,
-            "short_text": short_text
+            "short_text": short_text,
+            "status": status
         })
     return response
 
