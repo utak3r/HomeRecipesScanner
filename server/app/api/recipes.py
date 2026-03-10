@@ -30,7 +30,7 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
             else:
                 thumbnail_url = img_url
         else:
-            thumbnail_url = "/no_image_thumbnail.png"
+            thumbnail_url = "/static/no_image_thumbnail.png"
         
         text_source = r.cleaned_text or r.raw_text or ""
         words = text_source.split()
@@ -185,7 +185,7 @@ async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db))
             img_url = r.images[0].url
             thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1) if img_url.startswith("/uploads/") else img_url
         else:
-            thumbnail_url = "/no_image_thumbnail.png"
+            thumbnail_url = "/static/no_image_thumbnail.png"
         
         text_source = r.cleaned_text or r.raw_text or ""
         words = text_source.split()
