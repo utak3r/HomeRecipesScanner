@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react';
 
 export const RecipeDetail = () => {
   const { id } = useParams();
@@ -18,6 +18,9 @@ export const RecipeDetail = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [showReprocessConfirm, setShowReprocessConfirm] = useState(false);
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [showEditStructuredModal, setShowEditStructuredModal] = useState(false);
+  const [editStructured, setEditStructured] = useState<Recipe['structured'] | null>(null);
+  const [isSavingStructured, setIsSavingStructured] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,6 +77,33 @@ export const RecipeDetail = () => {
       alert('Nie udało się rozpocząć ponownego przetwarzania.');
       setIsReprocessing(false);
       setShowReprocessConfirm(false);
+    }
+  };
+
+  const handleSaveStructured = async () => {
+    if (!editStructured) return;
+
+    try {
+      setIsSavingStructured(true);
+      
+      // Filtrowanie pustych składników i kroków
+      const cleanedStructured = {
+        ...editStructured,
+        ingredients: editStructured.ingredients?.filter(ing => ing.name?.trim() !== ''),
+        steps: editStructured.steps?.filter(step => step?.trim() !== '')
+      };
+
+      await api.put(`/recipes/${id}`, { structured: cleanedStructured });
+      
+      const res = await api.get(`/recipes/${id}`);
+      setRecipe(res.data);
+      
+      setShowEditStructuredModal(false);
+    } catch (error) {
+      console.error('Failed to update structured content:', error);
+      alert('Nie udało się zapisać treści przepisu.');
+    } finally {
+      setIsSavingStructured(false);
     }
   };
 
@@ -167,6 +197,18 @@ export const RecipeDetail = () => {
                   >
                     <Pencil className="w-4 h-4 mr-2 flex-shrink-0" />
                     Edytuj tytuł
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      // Inicjalizacja kopii do edycji, unikając nulla
+                      setEditStructured(recipe.structured ? JSON.parse(JSON.stringify(recipe.structured)) : { ingredients: [], steps: [], notes: '' });
+                      setShowEditStructuredModal(true);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors font-medium border-b border-gray-100"
+                  >
+                    <Edit3 className="w-4 h-4 mr-2 flex-shrink-0" />
+                    Edytuj treść przepisu
                   </button>
                   <button
                     onClick={() => {
@@ -502,6 +544,249 @@ export const RecipeDetail = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Structured Content Modal */}
+      {showEditStructuredModal && editStructured && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] p-8 rounded-t-[2rem] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
+                  <Edit3 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Edytuj treść przepisu</h3>
+                  <p className="text-gray-500 text-sm">Popraw odczytane składniki i kroki wykonania.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isSavingStructured && setShowEditStructuredModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+                disabled={isSavingStructured}
+              >
+                <X className="w-8 h-8" />
+              </button>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto pr-4 space-y-10 min-h-0 custom-scrollbar">
+              
+              {/* Ingredients Section */}
+              <section>
+                <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <div className="w-2 h-6 bg-accent rounded-full mr-3"></div>
+                  Składniki
+                </h4>
+                <div className="space-y-3">
+                  {editStructured.ingredients?.map((ing, idx) => (
+                    <div key={idx} className="flex items-start gap-3 group">
+                      <input
+                        type="text"
+                        value={ing.name || ''}
+                        onChange={(e) => {
+                          const newIngs = [...(editStructured.ingredients || [])];
+                          newIngs[idx] = { ...newIngs[idx], name: e.target.value };
+                          setEditStructured({ ...editStructured, ingredients: newIngs });
+                        }}
+                        className="flex-grow px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-gray-800"
+                        placeholder="Nazwa składnika"
+                      />
+                      <input
+                        type="text"
+                        value={ing.amount || ''}
+                        onChange={(e) => {
+                          const newIngs = [...(editStructured.ingredients || [])];
+                          newIngs[idx] = { ...newIngs[idx], amount: e.target.value };
+                          setEditStructured({ ...editStructured, ingredients: newIngs });
+                        }}
+                        className="w-1/3 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-gray-800"
+                        placeholder="Ilość"
+                      />
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const newIngs = [...(editStructured.ingredients || [])];
+                            [newIngs[idx - 1], newIngs[idx]] = [newIngs[idx], newIngs[idx - 1]];
+                            setEditStructured({ ...editStructured, ingredients: newIngs });
+                          }}
+                          disabled={idx === 0}
+                          className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                          title="Przesuń wyżej"
+                        >
+                          <ChevronUp className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (idx === (editStructured.ingredients?.length || 0) - 1) return;
+                            const newIngs = [...(editStructured.ingredients || [])];
+                            [newIngs[idx + 1], newIngs[idx]] = [newIngs[idx], newIngs[idx + 1]];
+                            setEditStructured({ ...editStructured, ingredients: newIngs });
+                          }}
+                          disabled={idx === (editStructured.ingredients?.length || 0) - 1}
+                          className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                          title="Przesuń niżej"
+                        >
+                          <ChevronDown className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newIngs = editStructured.ingredients?.filter((_, i) => i !== idx);
+                          setEditStructured({ ...editStructured, ingredients: newIngs });
+                        }}
+                        className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0 self-center"
+                        title="Usuń składnik"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newIngs = [...(editStructured.ingredients || []), { name: '', amount: '' }];
+                      setEditStructured({ ...editStructured, ingredients: newIngs });
+                    }}
+                    className="inline-flex items-center text-accent font-medium hover:text-accent/80 transition-colors mt-2"
+                  >
+                    <PlusCircle className="w-5 h-5 mr-2" />
+                    Dodaj składnik
+                  </button>
+                </div>
+              </section>
+
+              {/* Steps Section */}
+              <section>
+                <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <div className="w-2 h-6 bg-brand-400 rounded-full mr-3"></div>
+                  Kroki przygotowania
+                </h4>
+                <div className="space-y-4">
+                  {editStructured.steps?.map((step, idx) => (
+                    <div key={idx} className="flex gap-4 items-start group">
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm mt-2">
+                        {idx + 1}
+                      </div>
+                      <textarea
+                        value={step || ''}
+                        onChange={(e) => {
+                          const newSteps = [...(editStructured.steps || [])];
+                          newSteps[idx] = e.target.value;
+                          setEditStructured({ ...editStructured, steps: newSteps });
+                          
+                          // Proste auto-resize dla textarea
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        className="flex-grow px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400 transition-all text-gray-800 min-h-[80px] resize-none overflow-hidden"
+                        placeholder="Opisz ten krok..."
+                        onKeyDown={(e) => {
+                           if(e.currentTarget) {
+                             e.currentTarget.style.height = 'auto';
+                             e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                           }
+                        }}
+                      />
+                      <div className="flex flex-col gap-1 shrink-0 mt-1">
+                        <button
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const newSteps = [...(editStructured.steps || [])];
+                            [newSteps[idx - 1], newSteps[idx]] = [newSteps[idx], newSteps[idx - 1]];
+                            setEditStructured({ ...editStructured, steps: newSteps });
+                          }}
+                          disabled={idx === 0}
+                          className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                          title="Przesuń wyżej"
+                        >
+                          <ChevronUp className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (idx === (editStructured.steps?.length || 0) - 1) return;
+                            const newSteps = [...(editStructured.steps || [])];
+                            [newSteps[idx + 1], newSteps[idx]] = [newSteps[idx], newSteps[idx + 1]];
+                            setEditStructured({ ...editStructured, steps: newSteps });
+                          }}
+                          disabled={idx === (editStructured.steps?.length || 0) - 1}
+                          className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                          title="Przesuń niżej"
+                        >
+                          <ChevronDown className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newSteps = editStructured.steps?.filter((_, i) => i !== idx);
+                          setEditStructured({ ...editStructured, steps: newSteps });
+                        }}
+                        className="p-3 mt-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0 self-center"
+                        title="Usuń krok"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newSteps = [...(editStructured.steps || []), ''];
+                      setEditStructured({ ...editStructured, steps: newSteps });
+                    }}
+                    className="inline-flex items-center text-brand-600 font-medium hover:text-brand-500 transition-colors mt-2"
+                  >
+                    <PlusCircle className="w-5 h-5 mr-2" />
+                    Dodaj krok
+                  </button>
+                </div>
+              </section>
+
+              {/* Notes Section */}
+              <section>
+                <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <div className="w-2 h-6 bg-yellow-400 rounded-full mr-3"></div>
+                  Wskazówki autora
+                </h4>
+                <textarea
+                  value={editStructured.notes || ''}
+                  onChange={(e) => {
+                    setEditStructured({ ...editStructured, notes: e.target.value });
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-all text-gray-800 min-h-[100px] resize-none overflow-hidden"
+                  placeholder="Dodatkowe informacje, sekrety kucharza..."
+                />
+              </section>
+
+            </div>
+
+            {/* Modal Footer / Actions */}
+            <div className="mt-8 pt-6 border-t border-gray-100 flex gap-4 shrink-0">
+              <button
+                onClick={() => setShowEditStructuredModal(false)}
+                disabled={isSavingStructured}
+                className="flex-1 px-6 py-4 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Zrezygnuj
+              </button>
+              <button
+                onClick={handleSaveStructured}
+                disabled={isSavingStructured}
+                className="flex-[2] px-6 py-4 rounded-xl font-bold text-white bg-accent hover:bg-accent/90 transition-all shadow-md shadow-accent/30 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+              >
+                {isSavingStructured ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  'Zapisz zmiany przepisu'
+                )}
+              </button>
+            </div>
+            
           </div>
         </div>
       )}
