@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  frontend:
+  frontend-vite:
     build:
       context: .
       dockerfile: Dockerfile
