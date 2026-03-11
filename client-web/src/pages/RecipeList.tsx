@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
+import { ChefHat } from 'lucide-react';
 
 export const RecipeList = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -14,44 +15,64 @@ export const RecipeList = () => {
     });
   }, []);
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Pobieranie listy przepisów...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
+        <p className="text-gray-500 font-medium">Pobieranie przepisów...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Miniatura</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tytuł</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skrót treści</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Akcje</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {recipes.map((recipe, idx) => (
-            <tr key={recipe.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 hover:bg-orange-50 transition-colors'}>
-              <td className="px-6 py-4 whitespace-nowrap">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="flex items-center justify-between mb-12">
+        <div>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Twoja Baza Przepisów</h1>
+          <p className="text-gray-500 mt-2">Przeglądaj i inspiruj się do gotowania.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        {recipes.map((recipe) => (
+          <Link 
+            key={recipe.id} 
+            to={`/recipe/${recipe.id}`}
+            className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lift transition-all duration-300 border border-gray-100 hover:-translate-y-1"
+          >
+            {/* Image Container */}
+            <div className="relative aspect-[4/3] overflow-hidden bg-brand-50">
+              {recipe.thumbnail_url ? (
                 <img
                   src={`${api.defaults.baseURL}${recipe.thumbnail_url}`}
-                  alt=""
-                  className="h-12 w-12 rounded object-cover border border-gray-200"
+                  alt={recipe.title || "Przepis"}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                {recipe.title || "Bez tytułu"}
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate">
-                {recipe.short_text}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <Link to={`/recipe/${recipe.id}`} className="text-orange-600 hover:text-orange-900">
-                  Otwórz →
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-brand-100 text-brand-300">
+                  <ChefHat size={48} />
+                </div>
+              )}
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </div>
+
+            {/* Content */}
+            <div className="p-6 flex flex-col flex-grow">
+              <h2 className="text-xl font-bold text-gray-900 leading-tight mb-3 group-hover:text-accent transition-colors line-clamp-2">
+                {recipe.title || "Przepis bez tytułu"}
+              </h2>
+              <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-grow">
+                {recipe.short_text || "Brak krótkiego opisu."}
+              </p>
+              
+              <div className="mt-auto pt-4 border-t border-gray-100 flex items-center text-sm font-medium text-accent">
+                ZOBACZ PRZEPIS <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 };
