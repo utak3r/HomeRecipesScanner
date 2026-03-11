@@ -216,7 +216,7 @@ export const RecipeDetail = () => {
         {(recipe.status === 'processing' || recipe.status === 'pending') && (
           <div className="mb-8 p-6 bg-brand-50 border border-brand-200 rounded-[2rem] flex items-center space-x-4 text-brand-800 shadow-sm animate-pulse">
             <RefreshCw className="w-6 h-6 animate-spin flex-shrink-0 text-brand-600" />
-            <span className="font-medium text-lg">Trwa analizowanie i czytanie przepisu. To może zająć kilkadziesiąt sekund...</span>
+            <span className="font-medium text-lg">Receptura jest rozpoznawana. To może zająć kilkadziesiąt sekund...</span>
           </div>
         )}
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, Plus } from 'lucide-react';
 
 export const RecipeList = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -31,6 +31,13 @@ export const RecipeList = () => {
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Twoja Baza Przepisów</h1>
           <p className="text-gray-500 mt-2">Przeglądaj i inspiruj się do gotowania.</p>
         </div>
+        <Link
+          to="/add"
+          className="inline-flex items-center px-6 py-3 rounded-xl font-medium text-white bg-accent hover:bg-accent/90 transition-colors shadow-sm shadow-accent/30"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Dodaj nowy przepis
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">

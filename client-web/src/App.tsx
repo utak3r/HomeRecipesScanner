@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { RecipeList } from './pages/RecipeList';
 import { RecipeDetail } from './pages/RecipeDetail';
+import { AddRecipe } from './pages/AddRecipe';
 
 function App() {
   return (
@@ -11,10 +12,11 @@ function App() {
             <Link to="/" className="text-2xl font-bold">Książka Kucharska</Link>
           </div>
         </nav>
-        
+
         <main className="container mx-auto py-6">
           <Routes>
             <Route path="/" element={<RecipeList />} />
+            <Route path="/add" element={<AddRecipe />} />
             <Route path="/recipe/:id" element={<RecipeDetail />} />
           </Routes>
         </main>
