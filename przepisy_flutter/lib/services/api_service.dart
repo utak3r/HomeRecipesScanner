@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import '../models/recipe.dart';
 
 class ApiService {
-  // Użyj adresu IP swojego komputera w sieci lokalnej!
   static const String baseUrl = 'http://192.168.68.108:8000';
 
   Future<List<Recipe>> fetchRecipes() async {
