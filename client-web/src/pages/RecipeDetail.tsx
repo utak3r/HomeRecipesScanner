@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil } from 'lucide-react';
+import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw } from 'lucide-react';
 
 export const RecipeDetail = () => {
   const { id } = useParams();
@@ -16,6 +16,8 @@ export const RecipeDetail = () => {
   const [showEditTitleModal, setShowEditTitleModal] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [showReprocessConfirm, setShowReprocessConfirm] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,6 +63,41 @@ export const RecipeDetail = () => {
       setIsEditingTitle(false);
     }
   };
+
+  const handleReprocess = async () => {
+    try {
+      setIsReprocessing(true);
+      await api.post(`/recipes/${id}/reprocess`);
+      setRecipe(prev => prev ? { ...prev, status: 'processing' } : prev);
+    } catch (error) {
+      console.error('Failed to start reprocessing:', error);
+      alert('Nie udało się rozpocząć ponownego przetwarzania.');
+      setIsReprocessing(false);
+      setShowReprocessConfirm(false);
+    }
+  };
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    
+    if (recipe?.status === 'processing' || recipe?.status === 'pending') {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await api.get(`/recipes/${id}`);
+          setRecipe(res.data);
+          if (res.data.status !== 'processing' && res.data.status !== 'pending') {
+            setIsReprocessing(false);
+            setShowReprocessConfirm(false);
+            clearInterval(intervalId);
+          }
+        } catch (error) {
+          console.error('Failed to poll status', error);
+        }
+      }, 3000);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [recipe?.status, id]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -119,7 +156,7 @@ export const RecipeDetail = () => {
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
@@ -128,8 +165,18 @@ export const RecipeDetail = () => {
                     }}
                     className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors font-medium border-b border-gray-100"
                   >
-                    <Pencil className="w-4 h-4 mr-2" />
+                    <Pencil className="w-4 h-4 mr-2 flex-shrink-0" />
                     Edytuj tytuł
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setShowReprocessConfirm(true);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-brand-600 hover:bg-brand-50 flex items-center transition-colors font-medium border-b border-gray-100"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2 flex-shrink-0" />
+                    Przeskanuj i przeczytaj jeszcze raz
                   </button>
                   <button
                     onClick={() => {
@@ -138,7 +185,7 @@ export const RecipeDetail = () => {
                     }}
                     className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors font-medium"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
                     Usuń przepis
                   </button>
                 </div>
@@ -166,6 +213,13 @@ export const RecipeDetail = () => {
 
       {/* Main Content Layout */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20">
+        {(recipe.status === 'processing' || recipe.status === 'pending') && (
+          <div className="mb-8 p-6 bg-brand-50 border border-brand-200 rounded-[2rem] flex items-center space-x-4 text-brand-800 shadow-sm animate-pulse">
+            <RefreshCw className="w-6 h-6 animate-spin flex-shrink-0 text-brand-600" />
+            <span className="font-medium text-lg">Trwa analizowanie i czytanie przepisu. To może zająć kilkadziesiąt sekund...</span>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
           
           {/* Ingredients Sidebar */}
@@ -352,6 +406,52 @@ export const RecipeDetail = () => {
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     'Zmień tytuł'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reprocess Confirmation Modal */}
+      {showReprocessConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => !isReprocessing && setShowReprocessConfirm(false)}
+              className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+              disabled={isReprocessing}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mb-2">
+                <RefreshCw className={`w-8 h-8 ${isReprocessing ? 'animate-spin' : ''}`} />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900">Ponowne skanowanie</h3>
+              <p className="text-gray-500 text-lg leading-relaxed">
+                Uwaga, wybranie tej opcji spowoduje <span className="font-semibold text-brand-600">nadpisanie wszystkich danych tekstowych!</span>
+              </p>
+              
+              <div className="flex w-full gap-4 mt-8 pt-4">
+                <button
+                  onClick={() => setShowReprocessConfirm(false)}
+                  disabled={isReprocessing}
+                  className="flex-1 px-6 py-3 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Anuluj
+                </button>
+                <button
+                  onClick={handleReprocess}
+                  disabled={isReprocessing}
+                  className="flex-1 px-6 py-3 rounded-xl font-medium text-white bg-brand-600 hover:bg-brand-700 transition-colors shadow-sm shadow-brand-600/30 flex justify-center items-center disabled:opacity-50"
+                >
+                  {isReprocessing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    'Zatwierdź'
                   )}
                 </button>
               </div>

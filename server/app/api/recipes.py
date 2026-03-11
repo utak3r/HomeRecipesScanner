@@ -168,6 +168,31 @@ async def get_status(recipe_id: int, db: AsyncSession = Depends(get_db)):
     recipe = await db.get(Recipe, recipe_id)
     return {"status": recipe.status}
 
+@router.post("/{recipe_id}/reprocess")
+async def reprocess_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Recipe).options(selectinload(Recipe.images)).where(Recipe.id == recipe_id)
+    )
+    recipe = result.scalar_one_or_none()
+
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    if not recipe.images:
+        raise HTTPException(status_code=400, detail="No images attached to this recipe")
+
+    recipe.status = "processing"
+    await db.commit()
+
+    file_paths = [img.file_path for img in recipe.images]
+    process_recipe.delay(recipe.id, file_paths)
+
+    return {
+        "recipe_id": recipe.id,
+        "files_count": len(file_paths),
+        "status": "processing"
+    }
+
 @router.get("/by-tag/{tag_name}", response_model=List[RecipeListOut])
 async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db)):
     stmt = (
