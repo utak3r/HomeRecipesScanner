@@ -237,8 +237,10 @@ export const RecipeDetail = () => {
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-100 text-accent mb-6">
-                <ChefHat size={24} />
+              <div className="inline-flex items-center justify-center mb-6">
+                <div className="bg-white p-2 rounded-[1.25rem] shadow-sm border border-brand-100 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+                  <img src="/ikonka_1024px.png" alt="Logo przepisu" className="w-14 h-14 rounded-xl object-cover" />
+                </div>
               </div>
               <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
                 {recipe.title || s?.title || "Przepis bez tytułu"}
