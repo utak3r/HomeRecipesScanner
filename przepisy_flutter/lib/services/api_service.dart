@@ -60,5 +60,15 @@ class ApiService {
       throw Exception('Błąd podczas ponownego przetwarzania przepisu');
     }
   }
+
+  Future<void> deleteRecipe(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/recipes/$id'),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Błąd podczas usuwania przepisu');
+    }
+  }
 }
 

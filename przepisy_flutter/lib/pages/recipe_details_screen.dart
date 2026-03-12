@@ -147,6 +147,45 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Usuń przepis'),
+          content: const Text(
+            'Uwaga! Wybranie tej opcji usunie wszystkie dane, włącznie ze zdjęciami!',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context); // Zamknij dialog
+                try {
+                  await ApiService().deleteRecipe(widget.recipeId);
+                  if (context.mounted) {
+                    Navigator.pop(context, true); // Powrót do listy z true, by odświeżyć
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Błąd: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Zatwierdź', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
@@ -189,9 +228,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     }
                   } else if (value == 'reprocess') {
                     _confirmReprocess();
+                  } else if (value == 'delete') {
+                    _confirmDelete();
                   }
                 },
-                itemBuilder: (context) => [
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
                   const PopupMenuItem(
                     value: 'edit_title',
                     child: Text('Edytuj tytuł'),
@@ -203,6 +244,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   const PopupMenuItem(
                     value: 'reprocess',
                     child: Text('Odczytaj jeszcze raz'),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'Usuń przepis',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
