@@ -50,5 +50,15 @@ class ApiService {
       throw Exception('Błąd aktualizacji treści przepisu');
     }
   }
+
+  Future<void> reprocessRecipe(int id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/recipes/$id/reprocess'),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 202) {
+      throw Exception('Błąd podczas ponownego przetwarzania przepisu');
+    }
+  }
 }
 
