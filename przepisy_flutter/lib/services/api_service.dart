@@ -37,4 +37,18 @@ class ApiService {
       throw Exception('Błąd aktualizacji tytułu');
     }
   }
+
+  Future<void> updateRecipeContent(
+      int id, Map<String, dynamic> structured) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/recipes/$id'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: json.encode({'structured': structured}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Błąd aktualizacji treści przepisu');
+    }
+  }
 }
+

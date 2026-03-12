@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'edit_recipe_content_screen.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
@@ -96,9 +97,23 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             title: const Text('Szczegóły przepisu'),
             actions: [
               PopupMenuButton<String>(
-                onSelected: (value) {
+                onSelected: (value) async {
                   if (value == 'edit_title') {
                     _showEditTitleDialog(currentTitle);
+                  } else if (value == 'edit_content') {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditRecipeContentScreen(
+                          recipeId: widget.recipeId,
+                          initialStructured:
+                              Map<String, dynamic>.from(structured),
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      _refreshRecipe();
+                    }
                   }
                 },
                 itemBuilder: (context) => [
@@ -106,10 +121,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     value: 'edit_title',
                     child: Text('Edytuj tytuł'),
                   ),
+                  const PopupMenuItem(
+                    value: 'edit_content',
+                    child: Text('Edytuj treść przepisu'),
+                  ),
                 ],
               ),
             ],
           ),
+
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -138,6 +158,19 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     child: Text('${entry.key + 1}. ${entry.value}'),
                   ),
                 ),
+                if (structured['notes'] != null &&
+                    structured['notes'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Notatki:',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    structured['notes'],
+                    style: const TextStyle(fontStyle: FontStyle.italic),
+                  ),
+                ],
                 // Twoje zdjęcia na końcu
                 if (recipe['images'] != null) ...[
                   const SizedBox(height: 20),
