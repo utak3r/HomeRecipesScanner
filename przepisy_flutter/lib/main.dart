@@ -154,14 +154,15 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                           color: Colors.orange,
                         ),
                   onTap: isReady
-                      ? () {
-                          Navigator.push(
+                      ? () async {
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
                                   RecipeDetailsScreen(recipeId: recipe.id),
                             ),
                           );
+                          _fetchData();
                         }
                       : () {
                           ScaffoldMessenger.of(context).showSnackBar(

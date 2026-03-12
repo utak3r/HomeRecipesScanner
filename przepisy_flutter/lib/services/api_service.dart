@@ -25,4 +25,16 @@ class ApiService {
       throw Exception('Błąd ładowania szczegółów przepisu');
     }
   }
+
+  Future<void> updateRecipeTitle(int id, String newTitle) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/recipes/$id'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: json.encode({'title': newTitle}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Błąd aktualizacji tytułu');
+    }
+  }
 }

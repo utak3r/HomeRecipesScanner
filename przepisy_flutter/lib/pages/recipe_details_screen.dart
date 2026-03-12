@@ -1,32 +1,122 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
-class RecipeDetailsScreen extends StatelessWidget {
+class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
   const RecipeDetailsScreen({super.key, required this.recipeId});
 
   @override
+  State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
+}
+
+class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
+  late Future<Map<String, dynamic>> _recipeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipe();
+  }
+
+  void _fetchRecipe() {
+    _recipeFuture = ApiService().fetchFullRecipe(widget.recipeId);
+  }
+
+  void _refreshRecipe() {
+    setState(() {
+      _fetchRecipe();
+    });
+  }
+
+  void _showEditTitleDialog(String currentTitle) {
+    final TextEditingController titleController =
+        TextEditingController(text: currentTitle);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edytuj tytuł'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(labelText: 'Tytuł przepisu'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ApiService().updateRecipeTitle(
+                    widget.recipeId,
+                    titleController.text,
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    _refreshRecipe();
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Błąd: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Zapisz'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Szczegóły przepisu')),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: ApiService().fetchFullRecipe(recipeId),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _recipeFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Szczegóły przepisu')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          var recipe = snapshot.data!;
-          var structured = recipe['structured'] ?? {};
-          var ingredients = structured['ingredients'] as List? ?? [];
-          var steps = structured['steps'] as List? ?? [];
+        var recipe = snapshot.data!;
+        var structured = recipe['structured'] ?? {};
+        var ingredients = structured['ingredients'] as List? ?? [];
+        var steps = structured['steps'] as List? ?? [];
+        String currentTitle = recipe['title'] ?? 'Bez tytułu';
 
-          return SingleChildScrollView(
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Szczegóły przepisu'),
+            actions: [
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit_title') {
+                    _showEditTitleDialog(currentTitle);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit_title',
+                    child: Text('Edytuj tytuł'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  recipe['title'] ?? 'Bez tytułu',
+                  currentTitle,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 20),
@@ -62,9 +152,9 @@ class RecipeDetailsScreen extends StatelessWidget {
                 ],
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
