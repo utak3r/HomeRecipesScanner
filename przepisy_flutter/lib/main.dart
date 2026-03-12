@@ -32,6 +32,8 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   final ApiService apiService = ApiService();
   Timer? _statusTimer;
   List<Recipe> _recipes = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -48,11 +50,19 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   Future<void> _fetchData() async {
     try {
       final data = await apiService.fetchRecipes();
+      if (!mounted) return;
       setState(() {
         _recipes = data;
+        _isLoading = false;
+        _error = null;
       });
       _manageTimer();
     } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Błąd: $e';
+        _isLoading = false;
+      });
       print("Błąd pobierania: $e");
     }
   }
@@ -73,30 +83,56 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Moje Przepisy')),
-      body: FutureBuilder<List<Recipe>>(
-        future: apiService.fetchRecipes(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              _recipes.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text("Błąd: ${snapshot.error}"));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text("Brak przepisów. Dodaj nowy skan!"),
-            );
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
+          );
+
+          if (result == true) {
+            setState(() {
+              _isLoading = true;
+            });
+            _fetchData();
           }
+        },
+        child: const Icon(Icons.add_a_photo),
+      ),
+    );
+  }
 
-          _recipes = snapshot.data!;
+  Widget _buildBody() {
+    if (_isLoading && _recipes.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (_error != null && _recipes.isEmpty) {
+      return Center(child: Text(_error!));
+    } else if (_recipes.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: const Center(
+                child: Text("Brak przepisów. Dodaj nowy skan!"),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-          return RefreshIndicator(
-            onRefresh: _fetchData,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: _recipes.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final recipe = _recipes[index];
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(8),
+        itemCount: _recipes.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final recipe = _recipes[index];
                 final bool isReady = recipe.status == 'processed';
 
                 return ListTile(
@@ -177,23 +213,6 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                 );
               },
             ),
-          );
-        },
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
-          );
-
-          if (result == true) {
-            setState(() {});
-          }
-        },
-        child: const Icon(Icons.add_a_photo),
-      ),
     );
   }
 }

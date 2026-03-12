@@ -25,6 +25,15 @@ class _UploadRecipeScreenState extends State<UploadRecipeScreen> {
     }
   }
 
+  Future<void> _pickMultipleImages() async {
+    final List<XFile> images = await _picker.pickMultiImage();
+    if (images.isNotEmpty) {
+      setState(() {
+        _selectedImages.addAll(images.map((img) => File(img.path)));
+      });
+    }
+  }
+
   Future<void> _uploadAll() async {
     if (_selectedImages.isEmpty) return;
 
@@ -109,7 +118,8 @@ class _UploadRecipeScreenState extends State<UploadRecipeScreen> {
                           Icon(Icons.camera_alt, size: 64, color: Colors.grey),
                           SizedBox(height: 16),
                           Text(
-                            'Zrób zdjęcia stron przepisu',
+                            'Zrób zdjęcia stron przepisu\nlub wybierz je z galerii',
+                            textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey),
                           ),
                         ],
@@ -150,11 +160,27 @@ class _UploadRecipeScreenState extends State<UploadRecipeScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isUploading ? null : _pickImage,
-        label: const Text('ZRÓB ZDJĘCIE'),
-        icon: const Icon(Icons.add_a_photo),
-        backgroundColor: Colors.orange,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            FloatingActionButton.extended(
+              heroTag: 'btn_camera',
+              onPressed: _isUploading ? null : _pickImage,
+              label: const Text('APARAT'),
+              icon: const Icon(Icons.camera_alt),
+              backgroundColor: Colors.orange,
+            ),
+            FloatingActionButton.extended(
+              heroTag: 'btn_gallery',
+              onPressed: _isUploading ? null : _pickMultipleImages,
+              label: const Text('GALERIA'),
+              icon: const Icon(Icons.photo_library),
+              backgroundColor: Colors.orange,
+            ),
+          ],
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
