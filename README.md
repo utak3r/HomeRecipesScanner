@@ -129,10 +129,11 @@ docker-compose up --build
 ### Kroki uruchomienia
 
 1. Sklonuj repozytorium.
+2. Skopiuj plik `przepisy_flutter/.env.example` na `przepisy_flutter/.env` i wyedytuj wedle potrzeb.
 2. Zbuduj aplikację Flutter:
 ```bash
 cd przepisy_flutter
-flutter run
+flutter run --dart-define-from-file=.env
 ```
 
 ## 🚀 Instalacja i Konfiguracja - aplikacja webowa
