@@ -130,11 +130,13 @@ docker-compose up --build
 
 1. Sklonuj repozytorium.
 2. Skopiuj plik `przepisy_flutter/.env.example` na `przepisy_flutter/.env` i wyedytuj wedle potrzeb.
-2. Zbuduj aplikację Flutter:
+3. Zbuduj aplikację Flutter:
 ```bash
 cd przepisy_flutter
-flutter run --dart-define-from-file=.env
+flutter build apk --dart-define-from-file=.env
 ```
+4. Gotowy plik w wersji release znajduje się w `build\app\outputs\flutter-apk\app-release.apk`
+
 
 ## 🚀 Instalacja i Konfiguracja - aplikacja webowa
 
