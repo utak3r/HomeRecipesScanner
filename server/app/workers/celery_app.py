@@ -1,8 +1,15 @@
 import os
 from celery import Celery
 from dotenv import load_dotenv
+from app.utils.logger import setup_logging
+from celery.signals import setup_logging as celery_setup_logging
 
 load_dotenv()
+
+@celery_setup_logging.connect
+def config_loggers(*args, **kwargs):
+    setup_logging(level="INFO", json_format=False)
+
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 celery_app = Celery(

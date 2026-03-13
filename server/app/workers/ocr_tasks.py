@@ -1,6 +1,5 @@
 import os
 import asyncio
-from celery.utils.log import get_task_logger
 from sqlalchemy import select
 
 from app.workers.celery_app import celery_app
@@ -8,12 +7,17 @@ from app.db.session import AsyncSessionLocal, engine
 from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.workers.ocr_pipeline import run_ocr_pipeline
+import structlog
 
-logger = get_task_logger(__name__)
+logger = structlog.get_logger("celery")
 
-@celery_app.task
-def process_recipe(recipe_id: int, file_paths: list[str]):
-    logger.info(f'celery_app.task calling process_recipe for recipe {recipe_id} with {len(file_paths)} files')
+@celery_app.task(bind=True)
+def process_recipe(self, recipe_id: int, file_paths: list[str], request_id: str = None):
+    if request_id:
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(request_id=request_id)
+        
+    logger.info("processing_started", recipe_id=recipe_id, files_count=len(file_paths))
     asyncio.run(_pipeline(recipe_id, file_paths))
 
 async def _pipeline(recipe_id: int, file_paths: list[str]):
@@ -40,7 +44,7 @@ async def _pipeline(recipe_id: int, file_paths: list[str]):
                     if not os.path.exists(path):
                         raise FileNotFoundError(f"Image not found: {path}")
 
-                logger.info(f'Processing recipe {recipe_id} with {len(sorted_paths)} files')
+                logger.info("db_metadata_loaded", recipe_id=recipe_id)
                 recipe.status = "processing"
                 await db.commit()
 
@@ -75,7 +79,7 @@ async def _pipeline(recipe_id: int, file_paths: list[str]):
                 }
 
             except Exception as e:
-                logger.error(f"Error processing recipe {recipe_id}: {str(e)}")
+                logger.exception("processing_failed", recipe_id=recipe_id, error=str(e))
                 await db.rollback()
                 
                 recipe = await db.get(Recipe, recipe_id)

@@ -11,6 +11,7 @@ from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.db.models.tag import Tag
 from app.workers.ocr_tasks import process_recipe
+import structlog
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -70,7 +71,8 @@ async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = 
 
     await db.commit()
 
-    process_recipe.delay(recipe.id, file_paths)
+    request_id = structlog.contextvars.get_contextvars().get("request_id")
+    process_recipe.delay(recipe.id, file_paths, request_id=request_id)
 
     return {
         "recipe_id": recipe.id,
@@ -185,7 +187,8 @@ async def reprocess_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     file_paths = [img.file_path for img in recipe.images]
-    process_recipe.delay(recipe.id, file_paths)
+    request_id = structlog.contextvars.get_contextvars().get("request_id")
+    process_recipe.delay(recipe.id, file_paths, request_id=request_id)
 
     return {
         "recipe_id": recipe.id,
