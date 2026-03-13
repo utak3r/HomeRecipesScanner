@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from app.api import recipes, tags
+from app.api import recipes, tags, health
 
 
 app = FastAPI(title="Baza przepisów kulinarnych")
@@ -21,3 +21,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(recipes.router)
 app.include_router(tags.router)
+app.include_router(health.router)
