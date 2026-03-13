@@ -95,9 +95,7 @@ async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/search/")
 async def search_recipes(q: str, db: AsyncSession = Depends(get_db)):
     stmt = select(Recipe).where(
-        Recipe.search_vector.op("@@")(
-            func.plainto_tsquery("polish", q)
-        )
+        Recipe.title.op("&@")(q) | Recipe.full_text.op("&@")(q)
     )
 
     result = await db.execute(stmt)
