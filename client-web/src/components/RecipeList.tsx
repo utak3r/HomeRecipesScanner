@@ -29,7 +29,7 @@ export const RecipeList = () => {
           <div className="relative aspect-[4/3] overflow-hidden bg-brand-50">
             {recipe.thumbnail_url ? (
               <img
-                src={`${API_BASE}${recipe.thumbnail_url}`}
+                src={recipe.thumbnail_url}
                 alt={recipe.title || "Przepis"}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />

@@ -19,8 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+from app.core.config import settings
+
+# ... (middleware setup remains the same)
+
+if settings.STORAGE == "local":
+    os.makedirs("uploads", exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(recipes.router)

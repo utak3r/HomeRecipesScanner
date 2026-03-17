@@ -5,7 +5,7 @@ import '../models/recipe.dart';
 class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://192.168.68.108:8000',
+    defaultValue: 'http://192.168.68.113:8000',
   );
 
   Future<List<Recipe>> fetchRecipes() async {
@@ -42,7 +42,9 @@ class ApiService {
   }
 
   Future<void> updateRecipeContent(
-      int id, Map<String, dynamic> structured) async {
+    int id,
+    Map<String, dynamic> structured,
+  ) async {
     final response = await http.put(
       Uri.parse('$baseUrl/recipes/$id'),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -65,13 +67,10 @@ class ApiService {
   }
 
   Future<void> deleteRecipe(int id) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/recipes/$id'),
-    );
+    final response = await http.delete(Uri.parse('$baseUrl/recipes/$id'));
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Błąd podczas usuwania przepisu');
     }
   }
 }
-

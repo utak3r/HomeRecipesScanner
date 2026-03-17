@@ -32,7 +32,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     setState(() {
       _recipeFuture = ApiService().fetchFullRecipe(widget.recipeId);
     });
-    
+
     _recipeFuture?.then((recipe) {
       if (recipe['status'] == 'processed' && _isProcessing) {
         setState(() {
@@ -40,22 +40,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         });
         _statusTimer?.cancel();
       } else if (recipe['status'] != 'processed') {
-         if (!_isProcessing) {
-             setState(() {
-                _isProcessing = true;
-             });
-         }
-         _startPolling();
+        if (!_isProcessing) {
+          setState(() {
+            _isProcessing = true;
+          });
+        }
+        _startPolling();
       }
     });
   }
-  
+
   void _startPolling() {
-      if (_statusTimer == null || !_statusTimer!.isActive) {
-          _statusTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-             _fetchRecipe();
-          });
-      }
+    if (_statusTimer == null || !_statusTimer!.isActive) {
+      _statusTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        _fetchRecipe();
+      });
+    }
   }
 
   void _refreshRecipe() {
@@ -63,8 +63,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   void _showEditTitleDialog(String currentTitle) {
-    final TextEditingController titleController =
-        TextEditingController(text: currentTitle);
+    final TextEditingController titleController = TextEditingController(
+      text: currentTitle,
+    );
 
     showDialog(
       context: context,
@@ -93,9 +94,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
@@ -127,19 +128,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 try {
                   await ApiService().reprocessRecipe(widget.recipeId);
                   setState(() {
-                     _isProcessing = true;
+                    _isProcessing = true;
                   });
                   _startPolling();
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Zatwierdź', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Zatwierdź',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -167,18 +171,24 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 try {
                   await ApiService().deleteRecipe(widget.recipeId);
                   if (context.mounted) {
-                    Navigator.pop(context, true); // Powrót do listy z true, by odświeżyć
+                    Navigator.pop(
+                      context,
+                      true,
+                    ); // Powrót do listy z true, by odświeżyć
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Zatwierdź', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Zatwierdź',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -218,8 +228,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       MaterialPageRoute(
                         builder: (context) => EditRecipeContentScreen(
                           recipeId: widget.recipeId,
-                          initialStructured:
-                              Map<String, dynamic>.from(structured),
+                          initialStructured: Map<String, dynamic>.from(
+                            structured,
+                          ),
                         ),
                       ),
                     );
@@ -281,7 +292,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       const Text(
                         'Składniki:',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ...ingredients.map(
                         (ing) => Text('• ${ing['amount']} ${ing['name']}'),
@@ -290,21 +303,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       const Text(
                         'Przygotowanie:',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ...steps.asMap().entries.map(
-                            (entry) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text('${entry.key + 1}. ${entry.value}'),
-                            ),
-                          ),
+                        (entry) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text('${entry.key + 1}. ${entry.value}'),
+                        ),
+                      ),
                       if (structured['notes'] != null &&
                           structured['notes'].toString().isNotEmpty) ...[
                         const SizedBox(height: 20),
                         const Text(
                           'Notatki:',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -312,17 +329,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                           style: const TextStyle(fontStyle: FontStyle.italic),
                         ),
                       ],
-                      // Twoje zdjęcia na końcu
                       if (recipe['images'] != null) ...[
                         const SizedBox(height: 20),
                         const Text(
                           'Skany:',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         ...recipe['images'].map(
-                          (img) => Image.network(
-                              '${ApiService.baseUrl}${img['url']}'),
+                          (img) => Image.network(img['url']),
                         ),
                       ],
                     ],

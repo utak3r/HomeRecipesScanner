@@ -6,7 +6,7 @@ from app.api.deps import get_db
 from app.schemas.recipe import RecipeOut, RecipeUpdate, RecipeListOut
 from typing import List
 from sqlalchemy.orm import selectinload
-from app.services.storage import save_upload
+from app.services.storage import get_storage, StorageService
 from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.db.models.tag import Tag
@@ -16,7 +16,10 @@ import structlog
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 @router.get("/", response_model=List[RecipeListOut])
-async def list_recipes(db: AsyncSession = Depends(get_db)):
+async def list_recipes(
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     result = await db.execute(
         select(Recipe).options(selectinload(Recipe.images)).order_by(Recipe.created_at.desc())
     )
@@ -25,11 +28,13 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
     response = []
     for r in recipes:
         if r.images:
-            img_url = r.images[0].url
-            if img_url.startswith("/uploads/"):
-                thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1)
+            img_url = storage.get_url(r.images[0].file_path)
+            # Handle thumbnails logic
+            if r.images[0].file_path.startswith("uploads/"):
+                thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
             else:
-                thumbnail_url = img_url
+                thumbnail_path = f"thumbs/{r.images[0].file_path}"
+            thumbnail_url = storage.get_url(thumbnail_path)
         else:
             thumbnail_url = "/static/no_image_thumbnail.png"
         
@@ -49,7 +54,11 @@ async def list_recipes(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/upload")
-async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_recipe(
+    files: list[UploadFile] = File(...), 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
 
     recipe = Recipe(status="processing")
     db.add(recipe)
@@ -58,7 +67,7 @@ async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = 
     file_paths = []
 
     for index, file in enumerate(files, start=1):
-        path = await save_upload(file)
+        path = await storage.save(file)
         file_paths.append(path)
 
         image = RecipeImage(
@@ -81,7 +90,11 @@ async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = 
     }
 
 @router.get("/{recipe_id}", response_model=RecipeOut)
-async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
+async def get_recipe(
+    recipe_id: int, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     result = await db.execute(
         select(Recipe).options(selectinload(Recipe.images)).where(Recipe.id == recipe_id)
     )
@@ -90,7 +103,18 @@ async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     if not recipe:
         raise HTTPException(404)
 
-    return recipe
+    # Manually construct response to use storage.get_url
+    return {
+        "id": recipe.id,
+        "title": recipe.title,
+        "structured": recipe.structured,
+        "status": recipe.status,
+        "images": [
+            {"id": img.id, "url": storage.get_url(img.file_path)}
+            for img in recipe.images
+        ]
+    }
+
 
 @router.get("/search/")
 async def search_recipes(q: str, db: AsyncSession = Depends(get_db)):
@@ -148,9 +172,10 @@ async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
 async def add_image(
     recipe_id: int,
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
 ):
-    path = await save_upload(file)
+    path = await storage.save(file)
 
     image = RecipeImage(
         recipe_id=recipe_id,
@@ -195,7 +220,11 @@ async def reprocess_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 @router.get("/by-tag/{tag_name}", response_model=List[RecipeListOut])
-async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db)):
+async def list_recipes_by_tag(
+    tag_name: str, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     stmt = (
         select(Recipe)
         .join(Recipe.tags)
@@ -210,8 +239,11 @@ async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db))
     response = []
     for r in recipes:
         if r.images:
-            img_url = r.images[0].url
-            thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1) if img_url.startswith("/uploads/") else img_url
+            if r.images[0].file_path.startswith("uploads/"):
+                thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
+            else:
+                thumbnail_path = f"thumbs/{r.images[0].file_path}"
+            thumbnail_url = storage.get_url(thumbnail_path)
         else:
             thumbnail_url = "/static/no_image_thumbnail.png"
         

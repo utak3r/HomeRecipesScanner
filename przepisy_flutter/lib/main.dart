@@ -144,7 +144,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: Image.network(
-                            '${ApiService.baseUrl}${recipe.thumbnailUrl}',
+                            recipe.thumbnailUrl, // This line was modified
                             width: 55,
                             height: 55,
                             fit: BoxFit.cover,
