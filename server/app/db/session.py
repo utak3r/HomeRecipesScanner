@@ -16,7 +16,15 @@ DATABASE_URL = f"postgresql+asyncpg://{USER}:{urllib.parse.quote_plus(PASSWORD)}
 
 #logger.info("DATABASE_URL", DATABASE_URL=DATABASE_URL)
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    connect_args={
+        "prepared_statement_cache_size": 0,
+        "statement_cache_size": 0
+    },
+    pool_pre_ping=True
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
