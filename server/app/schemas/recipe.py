@@ -23,7 +23,9 @@ class RecipeOut(BaseModel):
 
 class RecipeUpdate(BaseModel):
     title: Optional[str] = None
+    full_text: Optional[str] = None
     structured: Optional[dict] = None
+
 
 
 class TagRequest(BaseModel):

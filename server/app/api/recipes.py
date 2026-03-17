@@ -223,7 +223,9 @@ async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db))
             "id": r.id,
             "title": r.title or "Bez tytułu",
             "thumbnail_url": thumbnail_url,
-            "short_text": short_text
+            "short_text": short_text,
+            "status": r.status
         })
+
     
     return response

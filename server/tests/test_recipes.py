@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock, ANY
+
 from app.main import app
 from app.api.deps import get_db
 from app.db.models.recipe import Recipe
@@ -48,9 +49,11 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
     recipe_1 = Recipe(
         id=1, 
         title="Zupa pomidorowa", 
-        cleaned_text="Pyszna zupa z pomidorów.", 
-        raw_text=None
+        full_text="Pyszna zupa z pomidorów.",
+        status="new"
     )
+
+
     mock_image = MagicMock()
     mock_image.url = "/uploads/zupa.jpg"
     recipe_1.images = [mock_image]
@@ -60,9 +63,11 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
     recipe_2 = Recipe(
         id=2, 
         title=None, 
-        cleaned_text=None, 
-        raw_text=long_text
+        full_text=long_text,
+        status="processing"
     )
+
+
     recipe_2.images = []
 
     mock_result = MagicMock()
@@ -79,11 +84,13 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
     assert data[0]["id"] == 1
     assert data[0]["title"] == "Zupa pomidorowa"
     assert data[0]["thumbnail_url"] == "/uploads/thumbs/zupa.jpg"
+
     assert data[0]["short_text"] == "Pyszna zupa z pomidorów."
 
     assert data[1]["id"] == 2
     assert data[1]["title"] == "Bez tytułu"
-    assert data[1]["thumbnail_url"] == "/no_image_thumbnail.png"
+    assert data[1]["thumbnail_url"] == "/static/no_image_thumbnail.png"
+
     
     expected_short_text = "To jest bardzo długi przepis na ciasto, który specjalnie ma więcej niż piętnaście słów, abyśmy..."
     assert data[1]["short_text"] == expected_short_text
@@ -101,7 +108,9 @@ async def test_get_recipe_not_found(async_client, mock_db_session):
 
 @pytest.mark.asyncio
 async def test_get_recipe_success(async_client, mock_db_session):
-    fake_recipe = Recipe(id=1, title="Testowy Przepis", raw_text="Składniki...")
+    fake_recipe = Recipe(id=1, title="Testowy Przepis", full_text="Składniki...", status="processed")
+
+
     fake_recipe.images = []
     
     mock_result = MagicMock()
@@ -142,7 +151,10 @@ async def test_upload_recipe_multiple_files(mock_save_upload, mock_process_delay
     assert mock_save_upload.await_count == 2
     assert mock_db_session.add.call_count == 3 
     
-    mock_process_delay.assert_called_once_with(100, ["/path/1.jpg", "/path/2.jpg"])
+    mock_process_delay.assert_called_once_with(100, ["/path/1.jpg", "/path/2.jpg"], request_id=ANY)
+
+
+
 
 @pytest.mark.asyncio
 async def test_search_recipes(async_client, mock_db_session):
@@ -169,9 +181,11 @@ async def test_list_recipes_by_tag_success(async_client, mock_db_session):
     recipe = Recipe(
         id=10, 
         title="Kurczak w sosie", 
-        cleaned_text="Instrukcja gotowania obiadu...",
-        raw_text=None
+        full_text="Instrukcja gotowania obiadu...",
+        status="new"
     )
+
+
     recipe.images = []
 
     mock_result = MagicMock()
@@ -186,7 +200,8 @@ async def test_list_recipes_by_tag_success(async_client, mock_db_session):
     assert len(data) == 1
     assert data[0]["id"] == 10
     assert data[0]["title"] == "Kurczak w sosie"
-    assert data[0]["thumbnail_url"] == "/no_image_thumbnail.png"
+    assert data[0]["thumbnail_url"] == "/static/no_image_thumbnail.png"
+
     assert data[0]["short_text"] == "Instrukcja gotowania obiadu..."
 
 @pytest.mark.asyncio
@@ -247,9 +262,10 @@ async def test_update_recipe_success(async_client, mock_db_session):
     fake_recipe = Recipe(
         id=1, 
         title="Stary tytuł", 
-        cleaned_text="Stary tekst",
+        full_text="Stary tekst",
         status="new"
     )
+
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = fake_recipe
@@ -257,15 +273,17 @@ async def test_update_recipe_success(async_client, mock_db_session):
 
     payload = {
         "title": "Zaktualizowany tytuł",
-        "cleaned_text": "Zaktualizowany tekst",
+        "full_text": "Zaktualizowany tekst",
         "structured": {"skladniki": ["woda", "maka"]}
     }
+
     response = await async_client.put("/recipes/1", json=payload)
 
     assert response.status_code == 200
     assert response.json() == {"status": "updated"}
     assert fake_recipe.title == "Zaktualizowany tytuł"
-    assert fake_recipe.cleaned_text == "Zaktualizowany tekst"
+    assert fake_recipe.full_text == "Zaktualizowany tekst"
+
     assert fake_recipe.structured == {"skladniki": ["woda", "maka"]}
     assert fake_recipe.status == "new" 
 

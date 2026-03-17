@@ -10,10 +10,10 @@ load_dotenv()
 USER = os.getenv("POSTGRES_USER")
 PASSWORD = os.getenv("POSTGRES_PASSWORD")
 HOST = os.getenv("POSTGRES_HOST")
-PORT = os.getenv("POSTGRES_PORT")
+PORT = os.getenv("POSTGRES_PORT", "5432")
 DBNAME = os.getenv("POSTGRES_DB")
-
 DATABASE_URL = f"postgresql+asyncpg://{USER}:{urllib.parse.quote_plus(PASSWORD)}@{HOST}:{PORT}/{DBNAME}"
+
 #logger.info("DATABASE_URL", DATABASE_URL=DATABASE_URL)
 
 engine = create_async_engine(DATABASE_URL, echo=False)
