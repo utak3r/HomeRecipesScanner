@@ -34,12 +34,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     });
 
     _recipeFuture?.then((recipe) {
-      if (recipe['status'] == 'processed' && _isProcessing) {
+      final String status = recipe['status'] ?? '';
+      final bool busy = status == 'new' || status == 'processing';
+
+      if (!busy && _isProcessing) {
         setState(() {
           _isProcessing = false;
         });
         _statusTimer?.cancel();
-      } else if (recipe['status'] != 'processed') {
+      } else if (busy) {
         if (!_isProcessing) {
           setState(() {
             _isProcessing = true;

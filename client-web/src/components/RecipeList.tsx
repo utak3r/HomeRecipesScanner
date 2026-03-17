@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Recipe } from '../types/recipe';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -39,6 +39,20 @@ export const RecipeList = () => {
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            {/* Status Badges */}
+            {recipe.status === 'failed' && (
+              <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-full flex items-center space-x-1.5 shadow-lg z-10 animate-in fade-in zoom-in duration-300">
+                <AlertTriangle size={14} className="flex-shrink-0" />
+                <span className="text-[10px] font-bold tracking-wider uppercase">BŁĄD</span>
+              </div>
+            )}
+            {(recipe.status === 'processing' || recipe.status === 'pending') && (
+              <div className="absolute top-4 right-4 bg-brand-500 text-white px-3 py-1.5 rounded-full flex items-center space-x-1.5 shadow-lg z-10 animate-pulse">
+                <RefreshCw size={14} className="animate-spin flex-shrink-0" />
+                <span className="text-[10px] font-bold tracking-wider uppercase">PRZETWARZANIE</span>
+              </div>
+            )}
           </div>
 
           {/* Content */}

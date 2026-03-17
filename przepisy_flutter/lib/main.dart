@@ -68,13 +68,13 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   }
 
   void _manageTimer() {
-    bool hasProcessing = _recipes.any((r) => r.status != 'processed');
+    bool hasActiveProcessing = _recipes.any((r) => r.status == 'new' || r.status == 'processing');
 
-    if (hasProcessing && (_statusTimer == null || !_statusTimer!.isActive)) {
+    if (hasActiveProcessing && (_statusTimer == null || !_statusTimer!.isActive)) {
       _statusTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
         _fetchData();
       });
-    } else if (!hasProcessing) {
+    } else if (!hasActiveProcessing) {
       _statusTimer?.cancel();
     }
   }
@@ -133,85 +133,92 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final recipe = _recipes[index];
-                final bool isReady = recipe.status == 'processed';
+          final bool isBusy = recipe.status == 'new' || recipe.status == 'processing';
+          final bool isReady = recipe.status == 'processed';
+          final bool isFailed = recipe.status == 'failed';
 
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: isReady
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Image.network(
-                            recipe.thumbnailUrl, // This line was modified
-                            width: 55,
-                            height: 55,
-                            fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) =>
-                                const Icon(Icons.broken_image, size: 55),
-                          ),
-                        )
-                      : const SizedBox(
-                          width: 55,
-                          height: 55,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ),
-                  title: Text(
-                    recipe.title,
-                    style: TextStyle(
-                      fontWeight: isReady ? FontWeight.bold : FontWeight.normal,
-                      color: isReady ? Colors.black : Colors.grey[600],
-                    ),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(
-                      isReady ? recipe.shortText : "Trwa analiza dokumentu...",
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontStyle: isReady
-                            ? FontStyle.normal
-                            : FontStyle.italic,
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            leading: isBusy
+                ? const SizedBox(
+                    width: 55,
+                    height: 55,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.orange,
                       ),
                     ),
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      recipe.thumbnailUrl,
+                      width: 55,
+                      height: 55,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) =>
+                          const Icon(Icons.broken_image, size: 55),
+                    ),
                   ),
-                  trailing: isReady
-                      ? const Icon(Icons.arrow_forward_ios, size: 16)
-                      : const Icon(
-                          Icons.hourglass_bottom,
-                          color: Colors.orange,
+            title: Text(
+              recipe.title,
+              style: TextStyle(
+                fontWeight: isReady ? FontWeight.bold : FontWeight.normal,
+                color: isReady ? Colors.black : (isFailed ? Colors.red[700] : Colors.grey[600]),
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                isReady
+                    ? recipe.shortText
+                    : (isFailed
+                        ? "Błąd przetwarzania - kliknij, aby sprawdzić"
+                        : "Trwa analiza dokumentu..."),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontStyle: isReady ? FontStyle.normal : FontStyle.italic,
+                  color: isFailed ? Colors.red[400] : null,
+                ),
+              ),
+            ),
+            trailing: isBusy
+                ? const Icon(
+                    Icons.hourglass_bottom,
+                    color: Colors.orange,
+                  )
+                : (isFailed
+                    ? const Icon(Icons.error_outline, color: Colors.red)
+                    : const Icon(Icons.arrow_forward_ios, size: 16)),
+            onTap: isBusy
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Proszę czekać, trwa rozpoznawanie tekstu...',
                         ),
-                  onTap: isReady
-                      ? () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  RecipeDetailsScreen(recipeId: recipe.id),
-                            ),
-                          );
-                          _fetchData();
-                        }
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Proszę czekać, trwa rozpoznawanie tekstu...',
-                              ),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                );
-              },
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RecipeDetailsScreen(recipeId: recipe.id),
+                      ),
+                    );
+                    _fetchData();
+                  },
+          );
+        },
             ),
     );
   }
