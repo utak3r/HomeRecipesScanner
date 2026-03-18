@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
+import 'tags_management_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -69,7 +70,22 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               keyboardType: TextInputType.number,
             ),
+            const SizedBox(height: 32),
+            ListTile(
+              leading: const Icon(Icons.tag, color: Colors.orange),
+              title: const Text('Zarządzaj tagami'),
+              subtitle: const Text('Edytuj lub usuwaj globalne tagi'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const TagsManagementPage()),
+                );
+              },
+            ),
             const Spacer(),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

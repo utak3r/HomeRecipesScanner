@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/api_service.dart';
+import '../models/tag.dart';
 import 'edit_recipe_content_screen.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
@@ -106,6 +107,215 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               child: const Text('Zapisz'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showManageTagsDialog(List<Tag> currentTags) async {
+    final TextEditingController tagController = TextEditingController();
+    List<Tag> allTags = [];
+    try {
+      allTags = await ApiService().fetchTags();
+    } catch (e) {
+      print("Error fetching tags: $e");
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Zarządzaj tagami'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                  TextField(
+                    controller: tagController,
+                    decoration: InputDecoration(
+                      labelText: 'Dodaj nowy tag',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () async {
+                          if (tagController.text.isNotEmpty) {
+                            try {
+                              await ApiService().addTagToRecipe(
+                                widget.recipeId,
+                                tagController.text,
+                              );
+                              tagController.clear();
+                              // Refresh current tags in dialog
+                              final updatedRecipe = await ApiService()
+                                  .fetchFullRecipe(widget.recipeId);
+                              final updatedTagsJson =
+                                  updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                              setDialogState(() {
+                                currentTags = updatedTags;
+                              });
+                              _refreshRecipe();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Błąd: $e')));
+                              }
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    onSubmitted: (value) async {
+                      if (value.isNotEmpty) {
+                        try {
+                          await ApiService().addTagToRecipe(
+                            widget.recipeId,
+                            value,
+                          );
+                          tagController.clear();
+                          final updatedRecipe = await ApiService()
+                              .fetchFullRecipe(widget.recipeId);
+                          final updatedTagsJson =
+                              updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                          setDialogState(() {
+                            currentTags = updatedTags;
+                          });
+                          _refreshRecipe();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Błąd: $e')));
+                          }
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (allTags.isNotEmpty) ...[
+                    const Text('Dostępne tagi:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: allTags.where((at) => !currentTags.any((ct) => ct.id == at.id)).map((tag) {
+                        return ActionChip(
+                          label: Text(tag.name),
+                          onPressed: () async {
+                            try {
+                              await ApiService().addTagToRecipe(
+                                widget.recipeId,
+                                tag.name,
+                              );
+                              final updatedRecipe = await ApiService()
+                                  .fetchFullRecipe(widget.recipeId);
+                              final updatedTagsJson =
+                                  updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                              setDialogState(() {
+                                currentTags = updatedTags;
+                              });
+                              _refreshRecipe();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Błąd: $e')));
+                              }
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const Divider(),
+                  ],
+                  const Text('Przypisane tagi:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: currentTags.map((tag) {
+                      return InputChip(
+                        label: Text(tag.name),
+                        onDeleted: () async {
+                          try {
+                            await ApiService().removeTagFromRecipe(
+                              widget.recipeId,
+                              tag.id,
+                            );
+                            final updatedRecipe = await ApiService()
+                                .fetchFullRecipe(widget.recipeId);
+                            final updatedTagsJson =
+                                updatedRecipe['tags'] as List? ?? [];
+                            final updatedTags = updatedTagsJson
+                                .map((t) {
+                                  try {
+                                    return Tag.fromJson(t);
+                                  } catch (e) {
+                                    return null;
+                                  }
+                                })
+                                .whereType<Tag>()
+                                .toList();
+
+                            setDialogState(() {
+                              currentTags = updatedTags;
+                            });
+                            _refreshRecipe();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Błąd: $e')));
+                            }
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Zamknij'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -217,6 +427,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         var steps = structured['steps'] as List? ?? [];
         String currentTitle = recipe['title'] ?? 'Bez tytułu';
 
+        var tagsJson = recipe['tags'] as List? ?? [];
+        final List<Tag> tags = tagsJson
+            .map((t) {
+              try {
+                return Tag.fromJson(t);
+              } catch (e) {
+                print("Error parsing tag: $e");
+                return null;
+              }
+            })
+            .whereType<Tag>()
+            .toList();
+
+
         return Scaffold(
           appBar: AppBar(
             title: const Text('Szczegóły przepisu'),
@@ -291,6 +515,32 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         currentTitle,
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: -4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ...tags.map((tag) => Chip(
+                                label: Text('#${tag.name}',
+                                    style: const TextStyle(fontSize: 12)),
+                                backgroundColor: Colors.orange[50],
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20)),
+                                padding: EdgeInsets.zero,
+                              )),
+                          ActionChip(
+                            avatar: const Icon(Icons.add, size: 16),
+                            label: const Text('Dodaj tag',
+                                style: TextStyle(fontSize: 12)),
+                            onPressed: () => _showManageTagsDialog(tags),
+                            backgroundColor: Colors.grey[200],
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                       const Text(
                         'Składniki:',
@@ -353,3 +603,4 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 }
+

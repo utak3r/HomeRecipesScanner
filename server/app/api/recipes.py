@@ -21,7 +21,9 @@ async def list_recipes(
     storage: StorageService = Depends(get_storage)
 ):
     result = await db.execute(
-        select(Recipe).options(selectinload(Recipe.images)).order_by(Recipe.created_at.desc())
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .order_by(Recipe.created_at.desc())
     )
     recipes = result.scalars().all()
     
@@ -48,7 +50,8 @@ async def list_recipes(
             "title": r.title or "Bez tytułu",
             "thumbnail_url": thumbnail_url,
             "short_text": short_text,
-            "status": status
+            "status": status,
+            "tags": [{"id": t.id, "name": t.name} for t in r.tags]
         })
     return response
 
@@ -96,8 +99,11 @@ async def get_recipe(
     storage: StorageService = Depends(get_storage)
 ):
     result = await db.execute(
-        select(Recipe).options(selectinload(Recipe.images)).where(Recipe.id == recipe_id)
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .where(Recipe.id == recipe_id)
     )
+
     recipe = result.scalar_one_or_none()
 
     if not recipe:
@@ -109,6 +115,7 @@ async def get_recipe(
         "title": recipe.title,
         "structured": recipe.structured,
         "status": recipe.status,
+        "tags": [{"id": t.id, "name": t.name} for t in recipe.tags],
         "images": [
             {"id": img.id, "url": storage.get_url(img.file_path)}
             for img in recipe.images
@@ -229,7 +236,7 @@ async def list_recipes_by_tag(
         select(Recipe)
         .join(Recipe.tags)
         .where(func.lower(Tag.name) == tag_name.lower())
-        .options(selectinload(Recipe.images))
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
         .order_by(Recipe.created_at.desc())
     )
     
@@ -256,7 +263,8 @@ async def list_recipes_by_tag(
             "title": r.title or "Bez tytułu",
             "thumbnail_url": thumbnail_url,
             "short_text": short_text,
-            "status": r.status
+            "status": r.status,
+            "tags": [{"id": t.id, "name": t.name} for t in r.tags]
         })
 
     
