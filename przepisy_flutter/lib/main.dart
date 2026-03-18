@@ -5,7 +5,14 @@ import 'models/recipe.dart';
 import 'pages/recipe_details_screen.dart';
 import 'pages/upload_recipe_screen.dart';
 
-void main() => runApp(const RecipeApp());
+import 'services/settings_service.dart';
+import 'pages/settings_page.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SettingsService().init();
+  runApp(const RecipeApp());
+}
 
 class RecipeApp extends StatelessWidget {
   const RecipeApp({super.key});
@@ -82,7 +89,22 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Moje Przepisy')),
+      appBar: AppBar(
+        title: const Text('Moje Przepisy'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+              // Po powrocie z ustawień odświeżamy dane (w razie zmiany hosta)
+              _fetchData();
+            },
+          ),
+        ],
+      ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

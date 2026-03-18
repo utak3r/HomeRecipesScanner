@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/recipe.dart';
 
+import 'settings_service.dart';
+
 class ApiService {
-  static const String baseUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://192.168.68.113:8000',
-  );
+  static String get baseUrl => SettingsService().baseUrl;
 
   Future<List<Recipe>> fetchRecipes() async {
     final response = await http.get(Uri.parse('$baseUrl/recipes/'));

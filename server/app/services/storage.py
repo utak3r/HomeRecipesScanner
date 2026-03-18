@@ -116,9 +116,6 @@ class S3StorageService:
         return name
 
     def get_url(self, file_path: str) -> str:
-        # In this implementation, we assume we want public URLs or signed URLs.
-        # For now, let's return a simple URL if it's minio/local,
-        # or we could generate a presigned URL.
         try:
             url = self.s3.generate_presigned_url(
                 'get_object',
