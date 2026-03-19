@@ -173,8 +173,13 @@ async def test_upload_recipe_multiple_files(mock_process_delay, async_client, mo
 
 @pytest.mark.asyncio
 async def test_search_recipes(async_client, mock_db_session):
-    recipe_1 = Recipe(id=1, title="Ciasto marchewkowe")
-    recipe_2 = Recipe(id=2, title="Ciasto czekoladowe")
+    recipe_1 = Recipe(id=1, title="Ciasto marchewkowe", status="new", full_text="Przepis na ciasto")
+    recipe_1.tags = [Tag(id=1, name="Słodkie")]
+    recipe_1.images = []
+    
+    recipe_2 = Recipe(id=2, title="Ciasto czekoladowe", status="processing", full_text="Pyszne ciasto")
+    recipe_2.tags = []
+    recipe_2.images = []
 
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = [recipe_1, recipe_2]
@@ -185,8 +190,16 @@ async def test_search_recipes(async_client, mock_db_session):
     data = response.json()
     assert len(data) == 2
     
-    assert data[0] == {"id": 1, "title": "Ciasto marchewkowe"}
-    assert data[1] == {"id": 2, "title": "Ciasto czekoladowe"}
+    assert data[0]["id"] == 1
+    assert data[0]["title"] == "Ciasto marchewkowe"
+    assert data[0]["tags"] == [{"id": 1, "name": "Słodkie"}]
+    assert data[0]["status"] == "new"
+    assert data[0]["thumbnail_url"] == "/static/no_image_thumbnail.png"
+    
+    assert data[1]["id"] == 2
+    assert data[1]["title"] == "Ciasto czekoladowe"
+    assert data[1]["tags"] == []
+    assert data[1]["status"] == "processing"
     
     mock_db_session.execute.assert_awaited_once()
 

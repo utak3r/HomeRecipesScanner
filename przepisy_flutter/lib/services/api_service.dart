@@ -142,5 +142,17 @@ class ApiService {
       throw Exception('Błąd ładowania przepisów wg taga');
     }
   }
+
+  Future<List<Recipe>> searchRecipes(String query) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/recipes/search/?q=$query'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((data) => Recipe.fromJson(data)).toList();
+    } else {
+      throw Exception('Błąd wyszukiwania przepisów');
+    }
+  }
 }
 

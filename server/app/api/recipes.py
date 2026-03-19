@@ -15,6 +15,31 @@ import structlog
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
+def _format_recipe_list_item(r: Recipe, storage: StorageService) -> dict:
+    if r.images:
+        # Handle thumbnails logic
+        if r.images[0].file_path.startswith("uploads/"):
+            thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
+        else:
+            thumbnail_path = f"thumbs/{r.images[0].file_path}"
+        thumbnail_url = storage.get_url(thumbnail_path)
+    else:
+        thumbnail_url = "/static/no_image_thumbnail.png"
+    
+    text_source = r.full_text or ""
+    words = text_source.split()
+    short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
+    
+    return {
+        "id": r.id,
+        "title": r.title or "Bez tytułu",
+        "thumbnail_url": thumbnail_url,
+        "short_text": short_text,
+        "status": r.status,
+        "tags": [{"id": t.id, "name": t.name} for t in r.tags]
+    }
+
+
 @router.get("/", response_model=List[RecipeListOut])
 async def list_recipes(
     db: AsyncSession = Depends(get_db),
@@ -27,33 +52,7 @@ async def list_recipes(
     )
     recipes = result.scalars().all()
     
-    response = []
-    for r in recipes:
-        if r.images:
-            img_url = storage.get_url(r.images[0].file_path)
-            # Handle thumbnails logic
-            if r.images[0].file_path.startswith("uploads/"):
-                thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
-            else:
-                thumbnail_path = f"thumbs/{r.images[0].file_path}"
-            thumbnail_url = storage.get_url(thumbnail_path)
-        else:
-            thumbnail_url = "/static/no_image_thumbnail.png"
-        
-        text_source = r.full_text or ""
-        words = text_source.split()
-        short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
-        status = r.status
-        
-        response.append({
-            "id": r.id,
-            "title": r.title or "Bez tytułu",
-            "thumbnail_url": thumbnail_url,
-            "short_text": short_text,
-            "status": status,
-            "tags": [{"id": t.id, "name": t.name} for t in r.tags]
-        })
-    return response
+    return [_format_recipe_list_item(r, storage) for r in recipes]
 
 
 @router.post("/upload")
@@ -123,19 +122,22 @@ async def get_recipe(
     }
 
 
-@router.get("/search/")
-async def search_recipes(q: str, db: AsyncSession = Depends(get_db)):
-    stmt = select(Recipe).where(
-        Recipe.title.op("&@")(q) | Recipe.full_text.op("&@")(q)
+@router.get("/search/", response_model=List[RecipeListOut])
+async def search_recipes(
+    q: str, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
+    stmt = (
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .where(Recipe.title.op("&@")(q) | Recipe.full_text.op("&@")(q))
     )
 
     result = await db.execute(stmt)
     recipes = result.scalars().all()
 
-    return [
-        {"id": r.id, "title": r.title}
-        for r in recipes
-    ]
+    return [_format_recipe_list_item(r, storage) for r in recipes]
 
 @router.put("/{recipe_id}")
 async def update_recipe(
@@ -243,29 +245,4 @@ async def list_recipes_by_tag(
     result = await db.execute(stmt)
     recipes = result.scalars().all()
     
-    response = []
-    for r in recipes:
-        if r.images:
-            if r.images[0].file_path.startswith("uploads/"):
-                thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
-            else:
-                thumbnail_path = f"thumbs/{r.images[0].file_path}"
-            thumbnail_url = storage.get_url(thumbnail_path)
-        else:
-            thumbnail_url = "/static/no_image_thumbnail.png"
-        
-        text_source = r.full_text or ""
-        words = text_source.split()
-        short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
-        
-        response.append({
-            "id": r.id,
-            "title": r.title or "Bez tytułu",
-            "thumbnail_url": thumbnail_url,
-            "short_text": short_text,
-            "status": r.status,
-            "tags": [{"id": t.id, "name": t.name} for t in r.tags]
-        })
-
-    
-    return response
+    return [_format_recipe_list_item(r, storage) for r in recipes]

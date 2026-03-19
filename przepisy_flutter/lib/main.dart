@@ -41,12 +41,15 @@ class RecipeListScreen extends StatefulWidget {
 
 class _RecipeListScreenState extends State<RecipeListScreen> {
   final ApiService apiService = ApiService();
+  final TextEditingController _searchController = TextEditingController();
   Timer? _statusTimer;
   List<Recipe> _recipes = [];
   List<Tag> _allTags = [];
   String? _selectedTagName;
+  String _searchQuery = '';
   bool _isLoading = true;
   String? _error;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -57,14 +60,21 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   @override
   void dispose() {
     _statusTimer?.cancel();
+    _debounce?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchData() async {
     try {
-      final data = _selectedTagName != null
-          ? await apiService.fetchRecipesByTag(_selectedTagName!)
-          : await apiService.fetchRecipes();
+      final List<Recipe> data;
+      if (_searchQuery.isNotEmpty) {
+        data = await apiService.searchRecipes(_searchQuery);
+      } else if (_selectedTagName != null) {
+        data = await apiService.fetchRecipesByTag(_selectedTagName!);
+      } else {
+        data = await apiService.fetchRecipes();
+      }
       final tags = await apiService.fetchTags();
 
       if (!mounted) return;
@@ -120,6 +130,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
       ),
       body: Column(
         children: [
+          _buildSearchBar(),
           if (_allTags.isNotEmpty) _buildTagFilter(),
           Expanded(child: _buildBody()),
         ],
@@ -139,6 +150,55 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
           }
         },
         child: const Icon(Icons.add_a_photo),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Szukaj przepisów...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                      _isLoading = true;
+                    });
+                    _fetchData();
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.grey[100],
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ),
+        onChanged: (value) {
+          if (_debounce?.isActive ?? false) _debounce!.cancel();
+          _debounce = Timer(const Duration(milliseconds: 500), () {
+            setState(() {
+              _searchQuery = value;
+              _isLoading = true;
+            });
+            _fetchData();
+          });
+        },
+        onSubmitted: (value) {
+          setState(() {
+            _searchQuery = value;
+            _isLoading = true;
+          });
+          _fetchData();
+        },
       ),
     );
   }
