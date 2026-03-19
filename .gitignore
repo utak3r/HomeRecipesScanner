@@ -3,6 +3,10 @@ __pycache__/
 /server/PythonEnv/
 /server/uploads/
 .env
+.env.local
+.env.prod
+.dockerignore
+
 
 # Flutter client
 *.class
