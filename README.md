@@ -47,12 +47,12 @@ graph TB
             Worker[⚙️ Celery Worker]:::worker
             Tess[[📄 Tesseract OCR]]:::worker
         end
-
-        DB[(🗄️ PostgreSQL)]:::storage
-        Vol[(📂 Image Volume)]:::storage
     end
 
-    subgraph AI [Cloud services]
+    subgraph Cloud [Cloud services]
+        direction TB
+        DB[("🗄️ Supabase PostgreSQL")]:::storage
+        Vol[("📂 Cloudfare R2 images store")]:::storage
         Gemini[🧠 Gemini AI]:::cloud
     end
 
@@ -79,8 +79,8 @@ graph TB
 - **Asynchroniczność:** Celery + Redis – obsługa zadań OCR w tle.
 - **OCR Poziom 1:** Tesseract OCR – silnik zainstalowany lokalnie w kontenerze workera.
 - **OCR Poziom 2 & AI:** Google Gemini API – zaawansowana analiza wizualna i strukturyzacja danych.
-- **Baza danych:** PostgreSQL – przechowywanie metadanych przepisów oraz JSON.
-- **Storage:** Docker Volumes – przechowywanie oryginalnych plików graficznych.
+- **Baza danych:** Supabase PostgreSQL – przechowywanie metadanych przepisów oraz JSON.
+- **Storage:** Cloudfare R2, AWS S3, MinIO lub inny kompatybilny – przechowywanie oryginalnych plików graficznych.
 
 ## ⚙️ Pipeline Przetwarzania Danych
 
@@ -99,25 +99,45 @@ graph TB
 
 - Docker & Docker Compose
 - Klucz API do Google Gemini (do pobrania z Google AI Studio)
+- Baza danych PostgreSQL na Supabase
+- Kontener na pliki w Cloudfare R2, AWS S3, MinIO lub innym kompatybilnym serwisie
 
 ### Kroki uruchomienia
 
 1. Sklonuj repozytorium.
-2. Utwórz plik `.env` w podkatalogu `server` i uzupełnij dane:
+2. Utwórz pliki `.env.local` i `.env.prod` w podkatalogu `server` i uzupełnij dane:
 ```
+TESSERACT_PATH=tesseract
 GEMINI_API_KEY=twoj_klucz_api
-POSTGRES_USER=recipes_user
-POSTGRES_PASSWORD=password
-POSTGRES_DB=recipes
-DATABASE_URL=postgresql+asyncpg://recipes_user:recipes@db:5432/recipes
+POSTGRES_USER=twoj_user_db
+POSTGRES_PASSWORD=twoje_haslo_db
+POSTGRES_DB=twoja_nazwa_bazy
+POSTGRES_HOST=twoj_host_bazy
+POSTGRES_PORT=twoj_port_bazy
 REDIS_URL=redis://redis:6379/0
+STORAGE=cloud (lub local)
+S3_BUCKET=twoja_nazwa_bucketa
+S3_ACCESS_KEY=twoj_token_bucketa
+S3_SECRET_KEY=twoj_sekret_bucketa
+S3_REGION=auto (zależnie od serwisu, na Cloudfare R2 powinno być auto)
+S3_ENDPOINT_URL=https://endpoint.dla.plikow
 ```
-3. Uruchom cały stos technologiczny:
 
+3. Przejrzyj pliki `docker-compose.yml` oraz `docker-compose.prod.yml` i ewentualnie dopasuj (np. nazwy obrazów, tagi itp.)
+
+4. Uruchom cały stos technologiczny:
 ```bash
 cd server
 docker-compose up --build
 ```
+
+5. Zbuduj obrazy docelowe i pushnij na Docker Hub:
+```bash
+docker-compose -f docker-compose.prod.yml build
+docker-compose -f docker-compose.prod.yml push
+```
+
+Są też dostępne odpowiednie taski do użycia w *VSCode* w pliku `server/.vscode/tasks.json`.
 
 ## 🚀 Instalacja i Konfiguracja - aplikacja mobilna
 
@@ -135,7 +155,12 @@ docker-compose up --build
 cd przepisy_flutter
 flutter build apk --dart-define-from-file=.env
 ```
-4. Gotowy plik w wersji release znajduje się w `build\app\outputs\flutter-apk\app-release.apk`
+Gotowy plik w wersji release znajduje się w `build\app\outputs\flutter-apk\app-release.apk`
+
+4. Zainstaluj:
+```bash
+flutter install
+```
 
 
 ## 🚀 Instalacja i Konfiguracja - aplikacja webowa
