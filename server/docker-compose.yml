@@ -1,26 +1,4 @@
 services:
-  # PostreSQL with PGVector and Polish Hunspell dictionaries
-  db:
-    build:
-      context: .
-      dockerfile: Dockerfile.db
-    container_name: postgres_db
-    restart: always
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-recipes_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recipes}
-      POSTGRES_DB: ${POSTGRES_DB:-recipes}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-recipes_user} -d ${POSTGRES_DB:-recipes}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   # Messages Broker Redis
   redis:
@@ -36,7 +14,8 @@ services:
   # Main application (FastAPI)
   web:
     build: .
-    container_name: python_app
+    image: utak3r/home-recipes:debug
+    container_name: home-recipes
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
@@ -44,45 +23,37 @@ services:
       - "8000:8000"
       - "5678:5678" # debugpy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 10s
       timeout: 5s
       retries: 3
-    env_file: .env
+    env_file: .env.local
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-recipes_user}:${POSTGRES_PASSWORD:-recipes}@db:5432/${POSTGRES_DB:-recipes}
       - REDIS_URL=redis://redis:6379/0
       - TESSERACT_PATH=tesseract
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
   # Celery worker
   worker:
     build: .
-    container_name: celery_worker
+    image: utak3r/home-recipes-worker:debug
+    container_name: home-recipes-worker
     command: celery -A app.workers.celery_app worker -Q ocr --loglevel=info
     ports:
       - "5679:5679" # debugpy
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping"]
+      test: [ "CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
     volumes:
       - .:/app
-    env_file: .env
+    env_file: .env.local
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-recipes_user}:${POSTGRES_PASSWORD:-recipes}@db:5432/${POSTGRES_DB:-recipes}
       - REDIS_URL=redis://redis:6379/0
       - TESSERACT_PATH=tesseract
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-
-volumes:
-  postgres_data:

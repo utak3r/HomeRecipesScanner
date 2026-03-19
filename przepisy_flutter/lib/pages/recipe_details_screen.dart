@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/api_service.dart';
+import '../models/tag.dart';
 import 'edit_recipe_content_screen.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
@@ -32,30 +33,33 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     setState(() {
       _recipeFuture = ApiService().fetchFullRecipe(widget.recipeId);
     });
-    
+
     _recipeFuture?.then((recipe) {
-      if (recipe['status'] == 'processed' && _isProcessing) {
+      final String status = recipe['status'] ?? '';
+      final bool busy = status == 'new' || status == 'processing';
+
+      if (!busy && _isProcessing) {
         setState(() {
           _isProcessing = false;
         });
         _statusTimer?.cancel();
-      } else if (recipe['status'] != 'processed') {
-         if (!_isProcessing) {
-             setState(() {
-                _isProcessing = true;
-             });
-         }
-         _startPolling();
+      } else if (busy) {
+        if (!_isProcessing) {
+          setState(() {
+            _isProcessing = true;
+          });
+        }
+        _startPolling();
       }
     });
   }
-  
+
   void _startPolling() {
-      if (_statusTimer == null || !_statusTimer!.isActive) {
-          _statusTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-             _fetchRecipe();
-          });
-      }
+    if (_statusTimer == null || !_statusTimer!.isActive) {
+      _statusTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        _fetchRecipe();
+      });
+    }
   }
 
   void _refreshRecipe() {
@@ -63,8 +67,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   void _showEditTitleDialog(String currentTitle) {
-    final TextEditingController titleController =
-        TextEditingController(text: currentTitle);
+    final TextEditingController titleController = TextEditingController(
+      text: currentTitle,
+    );
 
     showDialog(
       context: context,
@@ -93,15 +98,224 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
               child: const Text('Zapisz'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showManageTagsDialog(List<Tag> currentTags) async {
+    final TextEditingController tagController = TextEditingController();
+    List<Tag> allTags = [];
+    try {
+      allTags = await ApiService().fetchTags();
+    } catch (e) {
+      print("Error fetching tags: $e");
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Zarządzaj tagami'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                  TextField(
+                    controller: tagController,
+                    decoration: InputDecoration(
+                      labelText: 'Dodaj nowy tag',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () async {
+                          if (tagController.text.isNotEmpty) {
+                            try {
+                              await ApiService().addTagToRecipe(
+                                widget.recipeId,
+                                tagController.text,
+                              );
+                              tagController.clear();
+                              // Refresh current tags in dialog
+                              final updatedRecipe = await ApiService()
+                                  .fetchFullRecipe(widget.recipeId);
+                              final updatedTagsJson =
+                                  updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                              setDialogState(() {
+                                currentTags = updatedTags;
+                              });
+                              _refreshRecipe();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Błąd: $e')));
+                              }
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    onSubmitted: (value) async {
+                      if (value.isNotEmpty) {
+                        try {
+                          await ApiService().addTagToRecipe(
+                            widget.recipeId,
+                            value,
+                          );
+                          tagController.clear();
+                          final updatedRecipe = await ApiService()
+                              .fetchFullRecipe(widget.recipeId);
+                          final updatedTagsJson =
+                              updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                          setDialogState(() {
+                            currentTags = updatedTags;
+                          });
+                          _refreshRecipe();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Błąd: $e')));
+                          }
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (allTags.isNotEmpty) ...[
+                    const Text('Dostępne tagi:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: allTags.where((at) => !currentTags.any((ct) => ct.id == at.id)).map((tag) {
+                        return ActionChip(
+                          label: Text(tag.name),
+                          onPressed: () async {
+                            try {
+                              await ApiService().addTagToRecipe(
+                                widget.recipeId,
+                                tag.name,
+                              );
+                              final updatedRecipe = await ApiService()
+                                  .fetchFullRecipe(widget.recipeId);
+                              final updatedTagsJson =
+                                  updatedRecipe['tags'] as List? ?? [];
+                              final updatedTags = updatedTagsJson
+                                  .map((t) {
+                                    try {
+                                      return Tag.fromJson(t);
+                                    } catch (e) {
+                                      return null;
+                                    }
+                                  })
+                                  .whereType<Tag>()
+                                  .toList();
+
+                              setDialogState(() {
+                                currentTags = updatedTags;
+                              });
+                              _refreshRecipe();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Błąd: $e')));
+                              }
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const Divider(),
+                  ],
+                  const Text('Przypisane tagi:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: currentTags.map((tag) {
+                      return InputChip(
+                        label: Text(tag.name),
+                        onDeleted: () async {
+                          try {
+                            await ApiService().removeTagFromRecipe(
+                              widget.recipeId,
+                              tag.id,
+                            );
+                            final updatedRecipe = await ApiService()
+                                .fetchFullRecipe(widget.recipeId);
+                            final updatedTagsJson =
+                                updatedRecipe['tags'] as List? ?? [];
+                            final updatedTags = updatedTagsJson
+                                .map((t) {
+                                  try {
+                                    return Tag.fromJson(t);
+                                  } catch (e) {
+                                    return null;
+                                  }
+                                })
+                                .whereType<Tag>()
+                                .toList();
+
+                            setDialogState(() {
+                              currentTags = updatedTags;
+                            });
+                            _refreshRecipe();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Błąd: $e')));
+                            }
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Zamknij'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -127,19 +341,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 try {
                   await ApiService().reprocessRecipe(widget.recipeId);
                   setState(() {
-                     _isProcessing = true;
+                    _isProcessing = true;
                   });
                   _startPolling();
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Zatwierdź', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Zatwierdź',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -167,18 +384,24 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 try {
                   await ApiService().deleteRecipe(widget.recipeId);
                   if (context.mounted) {
-                    Navigator.pop(context, true); // Powrót do listy z true, by odświeżyć
+                    Navigator.pop(
+                      context,
+                      true,
+                    ); // Powrót do listy z true, by odświeżyć
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Błąd: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Zatwierdź', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Zatwierdź',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -204,6 +427,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         var steps = structured['steps'] as List? ?? [];
         String currentTitle = recipe['title'] ?? 'Bez tytułu';
 
+        var tagsJson = recipe['tags'] as List? ?? [];
+        final List<Tag> tags = tagsJson
+            .map((t) {
+              try {
+                return Tag.fromJson(t);
+              } catch (e) {
+                print("Error parsing tag: $e");
+                return null;
+              }
+            })
+            .whereType<Tag>()
+            .toList();
+
+
         return Scaffold(
           appBar: AppBar(
             title: const Text('Szczegóły przepisu'),
@@ -218,8 +455,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       MaterialPageRoute(
                         builder: (context) => EditRecipeContentScreen(
                           recipeId: widget.recipeId,
-                          initialStructured:
-                              Map<String, dynamic>.from(structured),
+                          initialStructured: Map<String, dynamic>.from(
+                            structured,
+                          ),
                         ),
                       ),
                     );
@@ -277,11 +515,39 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         currentTitle,
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: -4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ...tags.map((tag) => Chip(
+                                label: Text('#${tag.name}',
+                                    style: const TextStyle(fontSize: 12)),
+                                backgroundColor: Colors.orange[50],
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20)),
+                                padding: EdgeInsets.zero,
+                              )),
+                          ActionChip(
+                            avatar: const Icon(Icons.add, size: 16),
+                            label: const Text('Dodaj tag',
+                                style: TextStyle(fontSize: 12)),
+                            onPressed: () => _showManageTagsDialog(tags),
+                            backgroundColor: Colors.grey[200],
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                       const Text(
                         'Składniki:',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ...ingredients.map(
                         (ing) => Text('• ${ing['amount']} ${ing['name']}'),
@@ -290,21 +556,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       const Text(
                         'Przygotowanie:',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ...steps.asMap().entries.map(
-                            (entry) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text('${entry.key + 1}. ${entry.value}'),
-                            ),
-                          ),
+                        (entry) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text('${entry.key + 1}. ${entry.value}'),
+                        ),
+                      ),
                       if (structured['notes'] != null &&
                           structured['notes'].toString().isNotEmpty) ...[
                         const SizedBox(height: 20),
                         const Text(
                           'Notatki:',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -312,17 +582,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                           style: const TextStyle(fontStyle: FontStyle.italic),
                         ),
                       ],
-                      // Twoje zdjęcia na końcu
                       if (recipe['images'] != null) ...[
                         const SizedBox(height: 20),
                         const Text(
                           'Skany:',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         ...recipe['images'].map(
-                          (img) => Image.network(
-                              '${ApiService.baseUrl}${img['url']}'),
+                          (img) => Image.network(img['url']),
                         ),
                       ],
                     ],
@@ -333,3 +603,4 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 }
+

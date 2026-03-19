@@ -1,0 +1,63 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Podnieś lokalnego dockera",
+            "type": "shell",
+            "command": "docker-compose up --build",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Podnieś lokalnie produkcyjne obrazy",
+            "type": "shell",
+            "command": "docker-compose -f docker-compose.prod.yml up --build",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Zbuduj obrazy produkcyjne",
+            "type": "shell",
+            "command": "docker-compose -f docker-compose.prod.yml build",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Wypchnij obrazy produkcyjne",
+            "type": "shell",
+            "command": "docker-compose -f docker-compose.prod.yml push",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Zbuduj i wypchnij obrazy produkcyjne",
+            "dependsOn": [
+                "Zbuduj obrazy produkcyjne",
+                "Wypchnij obrazy produkcyjne"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

@@ -6,7 +6,7 @@ from app.api.deps import get_db
 from app.schemas.recipe import RecipeOut, RecipeUpdate, RecipeListOut
 from typing import List
 from sqlalchemy.orm import selectinload
-from app.services.storage import save_upload
+from app.services.storage import get_storage, StorageService
 from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.db.models.tag import Tag
@@ -15,41 +15,52 @@ import structlog
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
+def _format_recipe_list_item(r: Recipe, storage: StorageService) -> dict:
+    if r.images:
+        # Handle thumbnails logic
+        if r.images[0].file_path.startswith("uploads/"):
+            thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
+        else:
+            thumbnail_path = f"thumbs/{r.images[0].file_path}"
+        thumbnail_url = storage.get_url(thumbnail_path)
+    else:
+        thumbnail_url = "/static/no_image_thumbnail.png"
+    
+    text_source = r.full_text or ""
+    words = text_source.split()
+    short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
+    
+    return {
+        "id": r.id,
+        "title": r.title or "Bez tytułu",
+        "thumbnail_url": thumbnail_url,
+        "short_text": short_text,
+        "status": r.status,
+        "tags": [{"id": t.id, "name": t.name} for t in r.tags]
+    }
+
+
 @router.get("/", response_model=List[RecipeListOut])
-async def list_recipes(db: AsyncSession = Depends(get_db)):
+async def list_recipes(
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     result = await db.execute(
-        select(Recipe).options(selectinload(Recipe.images)).order_by(Recipe.created_at.desc())
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .order_by(Recipe.created_at.desc())
     )
     recipes = result.scalars().all()
     
-    response = []
-    for r in recipes:
-        if r.images:
-            img_url = r.images[0].url
-            if img_url.startswith("/uploads/"):
-                thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1)
-            else:
-                thumbnail_url = img_url
-        else:
-            thumbnail_url = "/static/no_image_thumbnail.png"
-        
-        text_source = r.full_text or ""
-        words = text_source.split()
-        short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
-        status = r.status
-        
-        response.append({
-            "id": r.id,
-            "title": r.title or "Bez tytułu",
-            "thumbnail_url": thumbnail_url,
-            "short_text": short_text,
-            "status": status
-        })
-    return response
+    return [_format_recipe_list_item(r, storage) for r in recipes]
 
 
 @router.post("/upload")
-async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_recipe(
+    files: list[UploadFile] = File(...), 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
 
     recipe = Recipe(status="processing")
     db.add(recipe)
@@ -58,7 +69,7 @@ async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = 
     file_paths = []
 
     for index, file in enumerate(files, start=1):
-        path = await save_upload(file)
+        path = await storage.save(file)
         file_paths.append(path)
 
         image = RecipeImage(
@@ -81,32 +92,52 @@ async def upload_recipe(files: list[UploadFile] = File(...), db: AsyncSession = 
     }
 
 @router.get("/{recipe_id}", response_model=RecipeOut)
-async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
+async def get_recipe(
+    recipe_id: int, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     result = await db.execute(
-        select(Recipe).options(selectinload(Recipe.images)).where(Recipe.id == recipe_id)
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .where(Recipe.id == recipe_id)
     )
+
     recipe = result.scalar_one_or_none()
 
     if not recipe:
         raise HTTPException(404)
 
-    return recipe
+    # Manually construct response to use storage.get_url
+    return {
+        "id": recipe.id,
+        "title": recipe.title,
+        "structured": recipe.structured,
+        "status": recipe.status,
+        "tags": [{"id": t.id, "name": t.name} for t in recipe.tags],
+        "images": [
+            {"id": img.id, "url": storage.get_url(img.file_path)}
+            for img in recipe.images
+        ]
+    }
 
-@router.get("/search/")
-async def search_recipes(q: str, db: AsyncSession = Depends(get_db)):
-    stmt = select(Recipe).where(
-        Recipe.search_vector.op("@@")(
-            func.plainto_tsquery("polish", q)
-        )
+
+@router.get("/search/", response_model=List[RecipeListOut])
+async def search_recipes(
+    q: str, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
+    stmt = (
+        select(Recipe)
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
+        .where(Recipe.title.op("&@")(q) | Recipe.full_text.op("&@")(q))
     )
 
     result = await db.execute(stmt)
     recipes = result.scalars().all()
 
-    return [
-        {"id": r.id, "title": r.title}
-        for r in recipes
-    ]
+    return [_format_recipe_list_item(r, storage) for r in recipes]
 
 @router.put("/{recipe_id}")
 async def update_recipe(
@@ -150,9 +181,10 @@ async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
 async def add_image(
     recipe_id: int,
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
 ):
-    path = await save_upload(file)
+    path = await storage.save(file)
 
     image = RecipeImage(
         recipe_id=recipe_id,
@@ -197,35 +229,20 @@ async def reprocess_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 @router.get("/by-tag/{tag_name}", response_model=List[RecipeListOut])
-async def list_recipes_by_tag(tag_name: str, db: AsyncSession = Depends(get_db)):
+async def list_recipes_by_tag(
+    tag_name: str, 
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage)
+):
     stmt = (
         select(Recipe)
         .join(Recipe.tags)
         .where(func.lower(Tag.name) == tag_name.lower())
-        .options(selectinload(Recipe.images))
+        .options(selectinload(Recipe.images), selectinload(Recipe.tags))
         .order_by(Recipe.created_at.desc())
     )
     
     result = await db.execute(stmt)
     recipes = result.scalars().all()
     
-    response = []
-    for r in recipes:
-        if r.images:
-            img_url = r.images[0].url
-            thumbnail_url = img_url.replace("/uploads/", "/uploads/thumbs/", 1) if img_url.startswith("/uploads/") else img_url
-        else:
-            thumbnail_url = "/static/no_image_thumbnail.png"
-        
-        text_source = r.full_text or ""
-        words = text_source.split()
-        short_text = " ".join(words[:15]) + ("..." if len(words) > 15 else "")
-        
-        response.append({
-            "id": r.id,
-            "title": r.title or "Bez tytułu",
-            "thumbnail_url": thumbnail_url,
-            "short_text": short_text
-        })
-    
-    return response
+    return [_format_recipe_list_item(r, storage) for r in recipes]

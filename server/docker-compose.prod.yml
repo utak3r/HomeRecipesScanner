@@ -1,0 +1,61 @@
+services:
+
+  # Message Broker - optimized for 1GB RAM
+  redis:
+    image: redis:7-alpine
+    container_name: redis_broker
+    restart: always
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Main application FastAPI
+  web:
+    build: .
+    image: utak3r/home-recipes:latest
+    container_name: home-recipes
+    restart: always
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    env_file: .env.prod
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Celery worker
+  worker:
+    build: .
+    image: utak3r/home-recipes-worker:latest
+    container_name: home-recipes-worker
+    restart: always
+    command: celery -A app.workers.celery_app worker -Q ocr --loglevel=info --concurrency=1
+    env_file: .env.prod
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - TESSERACT_PATH=tesseract
+    deploy:
+      resources:
+        limits:
+          memory: 450M # More RAM for Tesseract/OCR
+    depends_on:
+      redis:
+        condition: service_healthy

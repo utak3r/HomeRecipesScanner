@@ -10,12 +10,21 @@ class RecipeImageOut(BaseModel):
         from_attributes = True
 
 
+class TagBasicOut(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class RecipeOut(BaseModel):
     id: int
     title: Optional[str]
     structured: Optional[dict]
     images: list[RecipeImageOut]
     status: str
+    tags: list[TagBasicOut] = []
 
     class Config:
         from_attributes = True
@@ -23,6 +32,7 @@ class RecipeOut(BaseModel):
 
 class RecipeUpdate(BaseModel):
     title: Optional[str] = None
+    full_text: Optional[str] = None
     structured: Optional[dict] = None
 
 
@@ -36,6 +46,8 @@ class RecipeListOut(BaseModel):
     thumbnail_url: str
     short_text: str
     status: str
+    tags: list[TagBasicOut] = []
+
 
     class Config:
         from_attributes = True

@@ -347,12 +347,12 @@ export const RecipeDetail = () => {
               {recipe.images.map((img) => (
                 <div key={img.id} className="w-full max-w-[500px]">
                   <button 
-                    onClick={() => setSelectedImage(`${api.defaults.baseURL}${img.url}`)}
+                    onClick={() => setSelectedImage(img.url)}
                     className="group block w-full relative rounded-[2rem] overflow-hidden bg-white p-3 shadow-soft hover:shadow-lift transition-all duration-500 border border-gray-100 cursor-zoom-in text-left focus:outline-none focus:ring-4 focus:ring-accent/20"
                   >
                     <div className="relative rounded-[1.5rem] overflow-hidden aspect-[3/4]">
                       <img
-                        src={`${api.defaults.baseURL}${img.url}`}
+                        src={img.url}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         alt="Skan przepisu"
                       />

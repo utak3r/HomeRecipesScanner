@@ -28,6 +28,9 @@ async def _pipeline(recipe_id: int, file_paths: list[str]):
                 if not recipe:
                     raise ValueError(f"Recipe {recipe_id} not found")
 
+                from app.services.storage import get_storage
+                storage = get_storage()
+                
                 # to be sure OCR gets pages in proper order,
                 # we're getting them from databse, sorted by page number
                 result = await db.execute(
@@ -38,7 +41,12 @@ async def _pipeline(recipe_id: int, file_paths: list[str]):
                 images = result.scalars().all()
                 if not images:
                     raise ValueError(f"No images found for recipe {recipe_id}")
-                sorted_paths = [img.file_path for img in images]
+                
+                # Get local paths (and download if needed)
+                sorted_paths = []
+                for img in images:
+                    local_p = await storage.get_local_path(img.file_path)
+                    sorted_paths.append(local_p)
 
                 for path in sorted_paths:
                     if not os.path.exists(path):
@@ -72,6 +80,9 @@ async def _pipeline(recipe_id: int, file_paths: list[str]):
                     recipe.structured = result
                     recipe.status = "processed"
                     await db.commit()
+
+                for path in sorted_paths:
+                    await storage.cleanup_local(path)
 
                 return {
                     "status": "success",

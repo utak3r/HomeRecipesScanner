@@ -1,12 +1,30 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 import os
+import urllib.parse
+import structlog
 
+logger = structlog.get_logger("db")
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://recipes_user:recipes@localhost/recipes")
+USER = os.getenv("POSTGRES_USER")
+PASSWORD = os.getenv("POSTGRES_PASSWORD")
+HOST = os.getenv("POSTGRES_HOST")
+PORT = os.getenv("POSTGRES_PORT", "5432")
+DBNAME = os.getenv("POSTGRES_DB")
+DATABASE_URL = f"postgresql+asyncpg://{USER}:{urllib.parse.quote_plus(PASSWORD)}@{HOST}:{PORT}/{DBNAME}"
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+#logger.info("DATABASE_URL", DATABASE_URL=DATABASE_URL)
+
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    connect_args={
+        "prepared_statement_cache_size": 0,
+        "statement_cache_size": 0
+    },
+    pool_pre_ping=True
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
