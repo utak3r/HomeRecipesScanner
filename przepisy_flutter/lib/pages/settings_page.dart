@@ -74,21 +74,23 @@ class _SettingsPageState extends State<SettingsPage> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 32),
-              ListTile(
-                leading: const Icon(Icons.tag, color: Colors.orange),
-                title: const Text('Zarządzaj tagami'),
-                subtitle: const Text('Edytuj lub usuwaj globalne tagi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TagsManagementPage(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 48),
+              if (AuthService().isAuthenticated) ...[
+                ListTile(
+                  leading: const Icon(Icons.tag, color: Colors.orange),
+                  title: const Text('Zarządzaj tagami'),
+                  subtitle: const Text('Edytuj lub usuwaj globalne tagi'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TagsManagementPage(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 48),
+              ],
 
               ElevatedButton(
                 onPressed: _save,
@@ -99,24 +101,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: const Text('ZAPISZ'),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  await AuthService().signOut();
-                  if (mounted) {
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil('/login', (route) => false);
-                  }
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('WYLOGUJ SIĘ'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+              if (AuthService().isAuthenticated) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await AuthService().signOut();
+                    if (mounted) {
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/login', (route) => false);
+                    }
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('WYLOGUJ SIĘ'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
