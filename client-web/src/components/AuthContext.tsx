@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
+import { setLogoutCallback } from '../services/api';
+
 interface User {
   name: string;
   email: string;
@@ -20,6 +22,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setLogoutCallback(logout);
+  }, []);
 
   useEffect(() => {
     if (token) {

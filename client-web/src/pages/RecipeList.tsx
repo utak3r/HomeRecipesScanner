@@ -3,17 +3,31 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
 import { ChefHat, Plus, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useAuth } from '../components/AuthContext';
 
 export const RecipeList = () => {
+  const { isAuthenticated } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/recipes/').then(res => {
-      setRecipes(res.data);
-      setLoading(false);
-    });
-  }, []);
+    let isMounted = true;
+    setLoading(true);
+    api.get('/recipes/')
+      .then(res => {
+        if (isMounted) {
+          setRecipes(res.data);
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch recipes:', err);
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+    return () => { isMounted = false; };
+  }, [isAuthenticated]);
 
   if (loading) {
     return (
@@ -40,7 +54,35 @@ export const RecipeList = () => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {!isAuthenticated ? (
+        <div className="bg-white rounded-[2rem] p-12 text-center border border-gray-100 shadow-sm">
+          <div className="w-20 h-20 bg-brand-50 text-brand-300 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ChefHat size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Witaj w Bazie Przepisów!</h2>
+          <p className="text-gray-500 max-w-md mx-auto mb-8">
+            Zaloguj się, aby przeglądać swoje przepisy, skanować nowe i tworzyć własną kolekcję kulinarną.
+          </p>
+        </div>
+      ) : recipes.length === 0 ? (
+        <div className="bg-white rounded-[2rem] p-12 text-center border border-gray-100 shadow-sm">
+          <div className="w-20 h-20 bg-brand-50 text-brand-300 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ChefHat size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Brak przepisów</h2>
+          <p className="text-gray-500 max-w-md mx-auto mb-8">
+            Twoja książka kucharska jest jeszcze pusta. Dodaj swój pierwszy przepis, aby zacząć!
+          </p>
+          <Link
+            to="/add"
+            className="inline-flex items-center px-6 py-3 rounded-xl font-medium text-white bg-accent hover:bg-accent/90 transition-colors shadow-sm shadow-accent/30"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Dodaj pierwszy przepis
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {recipes.map((recipe) => (
           <Link 
             key={recipe.id} 
@@ -94,6 +136,7 @@ export const RecipeList = () => {
           </Link>
         ))}
       </div>
+    )}
     </div>
   );
 };

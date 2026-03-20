@@ -3,11 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
 import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { useAuth } from '../components/AuthContext';
 
 export const RecipeDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,8 +27,18 @@ export const RecipeDetail = () => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get(`/recipes/${id}`).then(res => setRecipe(res.data));
-  }, [id]);
+    let isMounted = true;
+    setError(null);
+    api.get(`/recipes/${id}`)
+      .then(res => {
+        if (isMounted) setRecipe(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch recipe:', err);
+        if (isMounted) setError('Nie udało się wczytać przepisu.');
+      });
+    return () => { isMounted = false; };
+  }, [id, isAuthenticated]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -144,6 +157,26 @@ export const RecipeDetail = () => {
       document.body.style.overflow = 'auto';
     };
   }, [selectedImage]);
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 px-4 text-center">
+        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Ups! Coś poszło nie tak</h2>
+          <p className="text-gray-500 max-w-md">{error}</p>
+        </div>
+        <Link 
+          to="/" 
+          className="inline-flex items-center px-6 py-3 rounded-xl font-medium text-white bg-accent hover:bg-accent/90 transition-colors shadow-sm shadow-accent/30"
+        >
+          Wróć do listy przepisów
+        </Link>
+      </div>
+    );
+  }
 
   if (!recipe) {
     return (
