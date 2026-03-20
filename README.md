@@ -12,6 +12,8 @@ dla skanów przepisów spisanych odręcznie na kartce (lub kartkach) używa **Go
 poddawane jest analizie i strukturyzacji do postaci JSON z użyciem **Google Gemini AI**. Skany zapisane są w podpiętym wolemnie, a ustrukturyzowane 
 dane zapisane w bazie PostgreSQL, która te dane indeksuje i umożliwia późniejsze wyszukiwanie pełnotekstowe.
 
+<img src="./screenshots/client_web.jpg" alt="Web client screenshot" style="width:auto; height:500px;">
+<img src="./screenshots/client_android.jpg" alt="Android client screenshot" style="width:auto; height:500px;">
 
 ---
 
@@ -121,6 +123,10 @@ S3_ACCESS_KEY=twoj_token_bucketa
 S3_SECRET_KEY=twoj_sekret_bucketa
 S3_REGION=auto (zależnie od serwisu, na Cloudfare R2 powinno być auto)
 S3_ENDPOINT_URL=https://endpoint.dla.plikow
+GOOGLE_CLIENT_ID_ANDROID=CLIENT_ID_z_konsoli_Google
+GOOGLE_CLIENT_ID_WEB=CLIENT_ID_z_konsoli_Google
+ALLOWED_USERS=mail@pierwszy.com,mail@drugi.com
+JWT_SECRET_KEY=losowy_salt_do_generowania_JWT_tokenów
 ```
 
 3. Przejrzyj pliki `docker-compose.yml` oraz `docker-compose.prod.yml` i ewentualnie dopasuj (np. nazwy obrazów, tagi itp.)
@@ -175,6 +181,7 @@ flutter install
 2. Utwórz plik `.env` w podkatalogu `client-web` i uzupełnij dane:
 ```
 VITE_API_URL=http://twoje.ip.backendu:8000
+VITE_GOOGLE_CLIENT_ID=CLIENT_ID_z_konsoli_Google
 ```
 3. Uruchom cały stos technologiczny:
 
