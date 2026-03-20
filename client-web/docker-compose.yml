@@ -1,10 +1,13 @@
 services:
   frontend-vite:
+    image: utak3r/home-recipes-client:latest
+    container_name: home-recipes-client
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "3000:80"
     environment:
-      - VITE_API_URL=http://192.168.68.108:8000
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     restart: always

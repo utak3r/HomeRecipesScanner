@@ -14,15 +14,51 @@
       }
     },
     {
-      "label": "docker-compose: up",
+      "label": "Podnieś lokalnego dockera",
       "type": "shell",
       "command": "docker-compose up --build",
-      "isBackground": true,
-      "problemMatcher": [],
+      "group": "none",
       "presentation": {
         "reveal": "always",
         "panel": "new"
-      }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zbuduj obraz",
+      "type": "shell",
+      "command": "docker-compose build",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Wypchnij obraz",
+      "type": "shell",
+      "command": "docker-compose push",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zbuduj i wypchnij obraz",
+      "dependsOn": [
+        "Zbuduj obraz",
+        "Wypchnij obraz"
+      ],
+      "dependsOrder": "sequence",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
     }
   ]
 }
