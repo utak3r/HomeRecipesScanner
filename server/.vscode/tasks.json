@@ -58,6 +58,28 @@
                 "panel": "new"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Redis: Start",
+            "type": "shell",
+            "command": "docker-compose up -d redis",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Redis: Stop",
+            "type": "shell",
+            "command": "docker-compose stop redis",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
         }
     ]
 }

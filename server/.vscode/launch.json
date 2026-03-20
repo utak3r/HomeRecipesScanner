@@ -40,8 +40,11 @@
             ],
             "cwd": "${workspaceFolder}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}",
+                "REDIS_URL": "redis://localhost:6379/0"
             },
+            "preLaunchTask": "Redis: Start",
+            "postDebugTask": "Redis: Stop",
             "console": "integratedTerminal"
         },
         {
