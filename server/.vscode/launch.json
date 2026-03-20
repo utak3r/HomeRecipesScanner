@@ -15,7 +15,9 @@
             "module": "uvicorn",
             "args": [
                 "app.main:app",
-                "--reload"
+                "--reload",
+                "--host",
+                "0.0.0.0"
             ],
             "cwd": "${workspaceFolder}",
             "env": {

@@ -10,7 +10,7 @@ class ApiService {
   static String get baseUrl => SettingsService().baseUrl;
 
   Map<String, String> get _headers {
-    final token = AuthService().idToken;
+    final token = AuthService().backendToken;
     return {
       if (token != null) 'Authorization': 'Bearer $token',
     };
