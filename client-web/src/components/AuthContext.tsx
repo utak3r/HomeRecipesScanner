@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
-
+import api from '../services/api';
 import { setLogoutCallback } from '../services/api';
 
 interface User {
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const decoded: any = jwtDecode(token);
         setUser({
           name: decoded.name,
-          email: decoded.email,
+          email: decoded.email || decoded.sub, // Added fallback to sub (backend tokens use sub for email)
           picture: decoded.picture,
         });
       } catch (error) {
@@ -45,9 +45,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [token]);
 
-  const login = (newToken: string) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+  const login = async (googleToken: string) => {
+    try {
+      const response = await api.post('/auth/login', { id_token: googleToken });
+      const { access_token } = response.data;
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+    } catch (error) {
+      console.error('Backend login failed:', error);
+      logout();
+    }
   };
 
   const logout = () => {

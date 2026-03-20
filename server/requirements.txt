@@ -23,3 +23,5 @@ structlog==25.5.0
 pydantic-settings==2.8.1
 boto3==1.37.1
 moto[s3,server]==5.1.1
+python-jose[cryptography]==3.3.0
+google-auth==2.38.0

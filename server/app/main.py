@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from app.api import recipes, tags, health
+from app.api import recipes, tags, health, auth
 from app.utils.logger import setup_logging
 from app.utils.middleware import StructlogMiddleware
 
@@ -27,6 +27,7 @@ if settings.STORAGE == "local":
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+app.include_router(auth.router)
 app.include_router(recipes.router)
 app.include_router(tags.router)
 app.include_router(health.router)

@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str | None = None
     S3_REGION: str = "us-east-1"
     S3_ENDPOINT_URL: str | None = None
+    
+    # JWT settings
+    JWT_SECRET_KEY: str = "your-secret-key-change-it-in-env"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_DAYS: int = 7
+    
+    ALLOWED_USERS: str = ""
+    GOOGLE_CLIENT_ID_WEB: str | None = None
+    GOOGLE_CLIENT_ID_ANDROID: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
