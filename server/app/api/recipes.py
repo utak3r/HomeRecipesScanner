@@ -6,6 +6,7 @@ from app.api.deps import get_db
 from app.schemas.recipe import RecipeOut, RecipeUpdate, RecipeListOut
 from typing import List
 from sqlalchemy.orm import selectinload
+from app.api.auth import get_current_user
 from app.services.storage import get_storage, StorageService
 from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
@@ -13,11 +14,14 @@ from app.db.models.tag import Tag
 from app.workers.ocr_tasks import process_recipe
 import structlog
 
-router = APIRouter(prefix="/recipes", tags=["recipes"])
+router = APIRouter(
+    prefix="/recipes", 
+    tags=["recipes"],
+    dependencies=[Depends(get_current_user)]
+    )
 
 def _format_recipe_list_item(r: Recipe, storage: StorageService) -> dict:
     if r.images:
-        # Handle thumbnails logic
         if r.images[0].file_path.startswith("uploads/"):
             thumbnail_path = r.images[0].file_path.replace("uploads/", "uploads/thumbs/", 1)
         else:
@@ -108,7 +112,6 @@ async def get_recipe(
     if not recipe:
         raise HTTPException(404)
 
-    # Manually construct response to use storage.get_url
     return {
         "id": recipe.id,
         "title": recipe.title,

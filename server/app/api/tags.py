@@ -3,12 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
+from app.api.auth import get_current_user
 from app.api.deps import get_db
 from app.schemas.recipe import TagRequest, TagOut
 from app.db.models.recipe import Recipe
 from app.db.models.tag import Tag, recipe_tags
 
-router = APIRouter(prefix="/tags", tags=["tags"])
+router = APIRouter(
+    prefix="/tags", 
+    tags=["tags"],
+    dependencies=[Depends(get_current_user)]
+    )
 
 @router.get("/", response_model=list[TagOut])
 async def list_tags(db: AsyncSession = Depends(get_db)):

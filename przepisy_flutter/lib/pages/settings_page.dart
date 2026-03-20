@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
+import '../services/auth_service.dart';
 import 'tags_management_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -33,9 +34,9 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settings.setPort(_portController.text.trim());
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ustawienia zapisane')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Ustawienia zapisane')));
     Navigator.pop(context);
   }
 
@@ -47,48 +48,49 @@ class _SettingsPageState extends State<SettingsPage> {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _hostController,
-              decoration: const InputDecoration(
-                labelText: 'Host serwera',
-                hintText: 'np. 192.168.1.10',
-                border: OutlineInputBorder(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _hostController,
+                decoration: const InputDecoration(
+                  labelText: 'Host serwera',
+                  hintText: 'np. 192.168.1.10',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
               ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _portController,
-              decoration: const InputDecoration(
-                labelText: 'Port serwera',
-                hintText: 'np. 8000',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _portController,
+                decoration: const InputDecoration(
+                  labelText: 'Port serwera',
+                  hintText: 'np. 8000',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 32),
-            ListTile(
-              leading: const Icon(Icons.tag, color: Colors.orange),
-              title: const Text('Zarządzaj tagami'),
-              subtitle: const Text('Edytuj lub usuwaj globalne tagi'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const TagsManagementPage()),
-                );
-              },
-            ),
-            const Spacer(),
+              const SizedBox(height: 32),
+              ListTile(
+                leading: const Icon(Icons.tag, color: Colors.orange),
+                title: const Text('Zarządzaj tagami'),
+                subtitle: const Text('Edytuj lub usuwaj globalne tagi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TagsManagementPage(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 48),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
+              ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
@@ -97,8 +99,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: const Text('ZAPISZ'),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await AuthService().signOut();
+                  if (mounted) {
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/login', (route) => false);
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('WYLOGUJ SIĘ'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

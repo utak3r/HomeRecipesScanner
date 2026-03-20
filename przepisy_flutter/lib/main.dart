@@ -8,10 +8,15 @@ import 'pages/upload_recipe_screen.dart';
 
 import 'services/settings_service.dart';
 import 'pages/settings_page.dart';
+import 'services/auth_service.dart';
+import 'pages/login_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await SettingsService().init();
+  await AuthService().init();
   runApp(const RecipeApp());
 }
 
@@ -20,13 +25,17 @@ class RecipeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLoggedIn = AuthService().isAuthenticated;
+
     return MaterialApp(
-      title: 'Domowe Przepisy',
-      theme: ThemeData(
-        primarySwatch: Colors.orange,
-        useMaterial3: true,
-      ),
-      home: const RecipeListScreen(),
+      title: 'Baza Przepisów',
+      theme: ThemeData(primarySwatch: Colors.orange, useMaterial3: true),
+      home: isLoggedIn ? const RecipeListScreen() : const LoginPage(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/home': (context) => const RecipeListScreen(),
+        '/settings': (context) => const SettingsPage(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }
@@ -96,8 +105,9 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   }
 
   void _manageTimer() {
-    bool hasActiveProcessing =
-        _recipes.any((r) => r.status == 'new' || r.status == 'processing');
+    bool hasActiveProcessing = _recipes.any(
+      (r) => r.status == 'new' || r.status == 'processing',
+    );
 
     if (hasActiveProcessing &&
         (_statusTimer == null || !_statusTimer!.isActive)) {
@@ -175,9 +185,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                   },
                 )
               : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.grey[100],
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -264,9 +272,11 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.5,
               child: Center(
-                child: Text(_selectedTagName != null
-                    ? "Brak przepisów z tagiem #$_selectedTagName"
-                    : "Brak przepisów. Dodaj nowy skan!"),
+                child: Text(
+                  _selectedTagName != null
+                      ? "Brak przepisów z tagiem #$_selectedTagName"
+                      : "Brak przepisów. Dodaj nowy skan!",
+                ),
               ),
             ),
           ],
@@ -332,8 +342,8 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                     isReady
                         ? recipe.shortText
                         : (isFailed
-                            ? "Błąd przetwarzania - kliknij, aby sprawdzić"
-                            : "Trwa analiza dokumentu..."),
+                              ? "Błąd przetwarzania - kliknij, aby sprawdzić"
+                              : "Trwa analiza dokumentu..."),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -350,42 +360,43 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                       spacing: 4,
                       runSpacing: 4,
                       children: <Widget>[
-                        ...recipe.tags.take(3).map((tag) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[100],
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '#${tag.name}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.orange[900],
-                                  fontWeight: FontWeight.w500,
+                        ...recipe.tags
+                            .take(3)
+                            .map(
+                              (tag) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '#${tag.name}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange[900],
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            )),
+                            ),
                         if (recipe.tags.length > 3)
                           const Text(
                             '...',
-                            style: TextStyle(
-                                fontSize: 10, color: Colors.grey),
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
                           ),
                       ],
                     ),
                   ),
-
               ],
             ),
             trailing: isBusy
-                ? const Icon(
-                    Icons.hourglass_bottom,
-                    color: Colors.orange,
-                  )
+                ? const Icon(Icons.hourglass_bottom, color: Colors.orange)
                 : (isFailed
-                    ? const Icon(Icons.error_outline, color: Colors.red)
-                    : const Icon(Icons.arrow_forward_ios, size: 16)),
+                      ? const Icon(Icons.error_outline, color: Colors.red)
+                      : const Icon(Icons.arrow_forward_ios, size: 16)),
             onTap: isBusy
                 ? () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -413,4 +424,3 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     );
   }
 }
-

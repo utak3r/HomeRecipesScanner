@@ -4,12 +4,23 @@ import '../models/recipe.dart';
 import '../models/tag.dart';
 
 import 'settings_service.dart';
+import 'auth_service.dart';
 
 class ApiService {
   static String get baseUrl => SettingsService().baseUrl;
 
+  Map<String, String> get _headers {
+    final token = AuthService().idToken;
+    return {
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
   Future<List<Recipe>> fetchRecipes() async {
-    final response = await http.get(Uri.parse('$baseUrl/recipes/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/recipes/'),
+      headers: _headers,
+    );
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -20,7 +31,10 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> fetchFullRecipe(int id) async {
-    final response = await http.get(Uri.parse('$baseUrl/recipes/$id')); //
+    final response = await http.get(
+      Uri.parse('$baseUrl/recipes/$id'),
+      headers: _headers,
+    );
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -32,7 +46,7 @@ class ApiService {
   Future<void> updateRecipeTitle(int id, String newTitle) async {
     final response = await http.put(
       Uri.parse('$baseUrl/recipes/$id'),
-      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      headers: _headers..addAll({'Content-Type': 'application/json; charset=UTF-8'}),
       body: json.encode({'title': newTitle}),
     );
 
@@ -47,7 +61,7 @@ class ApiService {
   ) async {
     final response = await http.put(
       Uri.parse('$baseUrl/recipes/$id'),
-      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      headers: _headers..addAll({'Content-Type': 'application/json; charset=UTF-8'}),
       body: json.encode({'structured': structured}),
     );
 
@@ -59,6 +73,7 @@ class ApiService {
   Future<void> reprocessRecipe(int id) async {
     final response = await http.post(
       Uri.parse('$baseUrl/recipes/$id/reprocess'),
+      headers: _headers,
     );
 
     if (response.statusCode != 200 && response.statusCode != 202) {
@@ -67,7 +82,10 @@ class ApiService {
   }
 
   Future<void> deleteRecipe(int id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/recipes/$id'));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/recipes/$id'),
+      headers: _headers,
+    );
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Błąd podczas usuwania przepisu');
@@ -77,7 +95,10 @@ class ApiService {
   // Tag endpoints
 
   Future<List<Tag>> fetchTags() async {
-    final response = await http.get(Uri.parse('$baseUrl/tags/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/tags/'),
+      headers: _headers,
+    );
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -90,7 +111,7 @@ class ApiService {
   Future<void> addTagToRecipe(int recipeId, String tagName) async {
     final response = await http.post(
       Uri.parse('$baseUrl/tags/$recipeId'),
-      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      headers: _headers..addAll({'Content-Type': 'application/json; charset=UTF-8'}),
       body: json.encode({
         'tags': [tagName]
       }),
@@ -103,8 +124,10 @@ class ApiService {
   }
 
   Future<void> removeTagFromRecipe(int recipeId, int tagId) async {
-    final response =
-        await http.delete(Uri.parse('$baseUrl/tags/$recipeId/$tagId'));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/tags/$recipeId/$tagId'),
+      headers: _headers,
+    );
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Błąd usuwania taga z przepisu');
@@ -112,7 +135,10 @@ class ApiService {
   }
 
   Future<void> deleteTag(int tagId) async {
-    final response = await http.delete(Uri.parse('$baseUrl/tags/$tagId'));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/tags/$tagId'),
+      headers: _headers,
+    );
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Błąd usuwania taga');
@@ -122,7 +148,7 @@ class ApiService {
   Future<void> updateTag(int tagId, String newName) async {
     final response = await http.put(
       Uri.parse('$baseUrl/tags/$tagId'),
-      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      headers: _headers..addAll({'Content-Type': 'application/json; charset=UTF-8'}),
       body: json.encode({'name': newName}),
     );
 
@@ -132,8 +158,10 @@ class ApiService {
   }
 
   Future<List<Recipe>> fetchRecipesByTag(String tagName) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/recipes/by-tag/$tagName'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/recipes/by-tag/$tagName'),
+      headers: _headers,
+    );
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -144,8 +172,10 @@ class ApiService {
   }
 
   Future<List<Recipe>> searchRecipes(String query) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/recipes/search/?q=$query'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/recipes/search/?q=$query'),
+      headers: _headers,
+    );
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+
 from app.api import recipes, tags, health
 from app.utils.logger import setup_logging
 from app.utils.middleware import StructlogMiddleware
@@ -20,8 +21,6 @@ app.add_middleware(
 )
 
 from app.core.config import settings
-
-# ... (middleware setup remains the same)
 
 if settings.STORAGE == "local":
     os.makedirs("uploads", exist_ok=True)
