@@ -35,6 +35,7 @@ async def list_tags(db: AsyncSession = Depends(get_db)):
         for row in result
     ]
 
+
 @router.post("/{recipe_id}")
 async def add_tags(recipe_id: int, data: TagRequest, db: AsyncSession = Depends(get_db)):
     
@@ -96,12 +97,6 @@ async def remove_tag(tag_id: int, db: AsyncSession = Depends(get_db)):
 
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-
-    if tag.recipes:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Tag '{tag.name}' jest używany w {len(tag.recipes)} przepisach. Nie można go usunąć."
-        )
 
     await db.delete(tag)
     await db.commit()
