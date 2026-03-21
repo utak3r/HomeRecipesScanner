@@ -15,6 +15,11 @@ export interface RecipeImage {
   url: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+}
+
 export interface Recipe {
   id: number;
   title: string;
@@ -23,4 +28,5 @@ export interface Recipe {
   status: string;
   structured?: StructuredRecipe;
   images?: RecipeImage[];
+  tags: Tag[];
 }

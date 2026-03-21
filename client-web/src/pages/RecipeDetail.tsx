@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown, Tag as TagIcon, Plus, Check } from 'lucide-react';
 import { useAuth } from '../components/AuthContext';
 
 export const RecipeDetail = () => {
@@ -24,6 +24,12 @@ export const RecipeDetail = () => {
   const [showEditStructuredModal, setShowEditStructuredModal] = useState(false);
   const [editStructured, setEditStructured] = useState<Recipe['structured'] | null>(null);
   const [isSavingStructured, setIsSavingStructured] = useState(false);
+  
+  const [showTagEdit, setShowTagEdit] = useState(false);
+  const [allTags, setAllTags] = useState<{id: number, name: string}[]>([]);
+  const [newTagName, setNewTagName] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,8 +53,16 @@ export const RecipeDetail = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+    
+    // Fetch all tags for the selector
+    if (isAuthenticated) {
+      api.get('/tags/')
+        .then(res => setAllTags(res.data))
+        .catch(err => console.error('Failed to fetch all tags:', err));
+    }
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isAuthenticated]);
 
   const handleDelete = async () => {
     try {
@@ -117,6 +131,39 @@ export const RecipeDetail = () => {
       alert('Nie udało się zapisać treści przepisu.');
     } finally {
       setIsSavingStructured(false);
+    }
+  };
+
+  const handleAddTag = async (tagName: string) => {
+    if (!tagName.trim()) return;
+    setIsAddingTag(true);
+    try {
+      await api.post(`/tags/${id}`, { tags: [tagName.trim()] });
+      const res = await api.get(`/recipes/${id}`);
+      setRecipe(res.data);
+      setNewTagName('');
+      
+      // Update allTags if it's a new tag
+      const tagExists = allTags.some(t => t.name.toLowerCase() === tagName.trim().toLowerCase());
+      if (!tagExists) {
+        api.get('/tags/').then(res => setAllTags(res.data));
+      }
+    } catch (error) {
+      console.error('Failed to add tag:', error);
+      alert('Nie udało się dodać tagu.');
+    } finally {
+      setIsAddingTag(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagId: number) => {
+    try {
+      await api.delete(`/tags/${id}/${tagId}`);
+      const res = await api.get(`/recipes/${id}`);
+      setRecipe(res.data);
+    } catch (error) {
+      console.error('Failed to remove tag:', error);
+      alert('Nie udało się usunąć tagu.');
     }
   };
 
@@ -279,10 +326,82 @@ export const RecipeDetail = () => {
                 {recipe.title || s?.title || "Przepis bez tytułu"}
               </h1>
               {recipe.short_text && (
-                <p className="text-xl text-gray-500 font-light leading-relaxed max-w-2xl">
+                <p className="text-xl text-gray-500 font-light leading-relaxed max-w-2xl mb-6">
                   {recipe.short_text}
                 </p>
               )}
+
+              {/* Tags Section */}
+              <div className="flex flex-wrap items-center gap-3">
+                {recipe.tags?.map(tag => (
+                  <div 
+                    key={tag.id}
+                    className="group/tag flex items-center bg-white border border-brand-100 rounded-full pl-3 pr-1 py-1 shadow-sm hover:shadow-md transition-all"
+                  >
+                    <TagIcon size={14} className="text-brand-500 mr-2" />
+                    <span className="text-sm font-semibold text-gray-700 mr-2">{tag.name}</span>
+                    <button 
+                      onClick={() => handleRemoveTag(tag.id)}
+                      className="p-1 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                      title="Usuń tag z przepisu"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                
+                <div className="relative">
+                  {!showTagEdit ? (
+                    <button 
+                      onClick={() => setShowTagEdit(true)}
+                      className="inline-flex items-center px-4 py-2 rounded-full border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-accent/50 hover:text-accent transition-all"
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Dodaj tag
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <input
+                        list="available-tags"
+                        type="text"
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddTag(newTagName);
+                          if (e.key === 'Escape') {
+                            setShowTagEdit(false);
+                            setNewTagName('');
+                          }
+                        }}
+                        placeholder="Nazwa tagu..."
+                        className="px-3 py-1.5 rounded-full border border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 text-sm w-32 md:w-48"
+                        autoFocus
+                      />
+                      <datalist id="available-tags">
+                        {allTags.map(t => (
+                          <option key={t.id} value={t.name} />
+                        ))}
+                      </datalist>
+                      <button 
+                        onClick={() => handleAddTag(newTagName)}
+                        disabled={isAddingTag || !newTagName.trim()}
+                        className="p-1.5 bg-accent text-white rounded-full shadow-sm hover:bg-accent/90 disabled:opacity-50"
+                      >
+                        {isAddingTag ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setShowTagEdit(false);
+                          setNewTagName('');
+                        }}
+                        className="p-1.5 bg-gray-100 text-gray-500 rounded-full hover:bg-gray-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
