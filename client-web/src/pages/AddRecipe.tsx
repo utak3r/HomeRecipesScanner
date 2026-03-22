@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ImagePlus, X, Send, AlertTriangle, Maximize2 } from 'lucide-react';
+import { ArrowLeft, ImagePlus, X, Send, AlertTriangle, Maximize2, Link2 } from 'lucide-react';
 import { 
   DndContext, 
   closestCenter, 
@@ -92,6 +92,7 @@ export const AddRecipe = () => {
   const navigate = useNavigate();
   const [images, setImages] = useState<{ id: string; file: File; previewUrl: string }[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [url, setUrl] = useState('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -137,12 +138,17 @@ export const AddRecipe = () => {
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
-      const formData = new FormData();
-      images.forEach((img) => formData.append('files', img.file));
-
-      const res = await api.post<{recipe_id: number, files_count: number, status: string}>('/recipes/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      
+      let res;
+      if (url.trim()) {
+        res = await api.post<{recipe_id: number}>('/recipes/from_url', { url: url.trim() });
+      } else {
+        const formData = new FormData();
+        images.forEach((img) => formData.append('files', img.file));
+        res = await api.post<{recipe_id: number, files_count: number, status: string}>('/recipes/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
       
       navigate(`/recipe/${res.data.recipe_id}`);
     } catch (error) {
@@ -188,9 +194,9 @@ export const AddRecipe = () => {
               Dodaj nowy przepis
             </h1>
           </div>
-          <button
+            <button
             onClick={() => setShowSubmitConfirm(true)}
-            disabled={images.length === 0}
+            disabled={images.length === 0 && !url.trim()}
             className="inline-flex items-center px-8 py-4 rounded-xl font-bold text-white bg-accent hover:bg-accent/90 transition-all shadow-lg hover:shadow-accent/40 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
           >
             <Send className="w-5 h-5 mr-3" />
@@ -201,6 +207,42 @@ export const AddRecipe = () => {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 relative z-20">
         
+        {/* URL Input */}
+        <div className="max-w-xl mx-auto mb-8">
+          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-10 h-10 bg-brand-100 text-accent rounded-full flex items-center justify-center">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Dodaj z linku</h2>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Wklej link do przepisu (np. z bloga)..."
+                className="w-full pl-4 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-gray-800 placeholder:text-gray-400"
+              />
+            </div>
+            {url.trim() && images.length > 0 && (
+              <p className="mt-3 text-sm text-amber-600 flex items-center">
+                <AlertTriangle className="w-4 h-4 mr-1.5 shrink-0" />
+                Uwaga: Link ma priorytet. Zdjęcia nie zostaną wysłane.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="relative mb-12 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative bg-[#F8F9FA] px-4 font-bold text-gray-400 text-sm italic uppercase tracking-widest">
+            albo wgraj zdjęcia
+          </div>
+        </div>
+
         {/* Upload Button */}
         <div className="flex justify-center mb-12">
           <label className="cursor-pointer group flex flex-col items-center justify-center w-full max-w-xl h-64 rounded-3xl border-3 border-dashed border-gray-300 hover:border-accent bg-white hover:bg-brand-50/50 transition-all duration-300">
@@ -275,7 +317,11 @@ export const AddRecipe = () => {
               </div>
               <h3 className="text-2xl font-bold text-gray-900">Rozpoznaj przepis</h3>
               <p className="text-gray-500 text-lg leading-relaxed">
-                Jesteś pewien, że chcesz wysłać do skanowania i rozpoznania <span className="font-bold text-accent">{images.length} {images.length === 1 ? 'zdjęcie' : (images.length > 1 && images.length < 5) ? 'zdjęcia' : 'zdjęć'}</span>?
+                {url.trim() ? (
+                  <>Jesteś pewien, że chcesz pobrać i rozpoznać przepis z linku <span className="font-bold text-accent">URL</span>?</>
+                ) : (
+                  <>Jesteś pewien, że chcesz wysłać do skanowania i rozpoznania <span className="font-bold text-accent">{images.length} {images.length === 1 ? 'zdjęcie' : (images.length > 1 && images.length < 5) ? 'zdjęcia' : 'zdjęć'}</span>?</>
+                )}
               </p>
               
               <div className="flex w-full gap-4 mt-8 pt-4">
