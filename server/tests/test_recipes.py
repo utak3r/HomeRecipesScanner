@@ -20,6 +20,7 @@ def mock_storage():
 def mock_db_session():
     """Mocking AsyncSession from SQLAlchemy"""
     session = AsyncMock()
+    session.add = MagicMock()
     return session
 
 @pytest.fixture
@@ -169,6 +170,32 @@ async def test_upload_recipe_multiple_files(mock_process_delay, async_client, mo
     assert mock_db_session.add.call_count == 3 
     
     mock_process_delay.assert_called_once_with(100, ["/path/1.jpg", "/path/2.jpg"], request_id=ANY)
+
+
+@pytest.mark.asyncio
+@patch("app.workers.url_tasks.process_url_recipe.delay")
+async def test_extract_recipe_from_url(mock_process_url_delay, async_client, mock_db_session):
+    async def mock_flush(*args, **kwargs):
+        for call in mock_db_session.add.call_args_list:
+            instance = call[0][0]
+            if isinstance(instance, Recipe):
+                instance.id = 101
+
+    mock_db_session.flush.side_effect = mock_flush
+
+    payload = {"url": "https://example.com/recipe"}
+    response = await async_client.post("/recipes/from_url", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["recipe_id"] == 101
+    assert data["status"] == "processing"
+
+    # Verify that the recipe was created with the correct source
+    added_recipe = mock_db_session.add.call_args_list[0][0][0]
+    assert added_recipe.source == "https://example.com/recipe"
+    
+    mock_process_url_delay.assert_called_once_with(101, "https://example.com/recipe", request_id=ANY)
 
 
 

@@ -101,7 +101,7 @@ async def _pipeline(recipe_id: int, url: str):
                 recipe = await db.get(Recipe, recipe_id)
                 if recipe:
                     recipe.title = result.get("title")
-                    recipe.cleaned_text = flat_cleaned_text.strip()
+                    recipe.full_text = flat_cleaned_text.strip()
                     recipe.structured = result
                     recipe.status = "processed"
                     await db.commit()

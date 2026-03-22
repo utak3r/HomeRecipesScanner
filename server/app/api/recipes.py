@@ -104,7 +104,7 @@ async def extract_recipe_from_url(
 ):
     from app.workers.url_tasks import process_url_recipe
     
-    recipe = Recipe(status="processing", source="url")
+    recipe = Recipe(status="processing", source=str(req.url))
     db.add(recipe)
     await db.flush()
     await db.commit()
