@@ -1,5 +1,15 @@
 {
     "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "FastAPI + Celery (Zależności)",
+            "configurations": [
+                "FastAPI (uvicorn)",
+                "Celery Worker"
+            ],
+            "stopAll": true
+        }
+    ],
     "configurations": [
         {
             "name": "Python Debugger: Current File",
@@ -20,9 +30,12 @@
                 "0.0.0.0"
             ],
             "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env.local",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
             },
+            "preLaunchTask": "Dependencies: Start",
+            "postDebugTask": "Dependencies: Stop",
             "console": "integratedTerminal"
         },
         {
@@ -35,18 +48,19 @@
                 "app.workers.celery_app",
                 "worker",
                 "-Q",
-                "ocr",
+                "ocr,url_tasks",
                 "-P",
                 "solo",
                 "--loglevel=info"
             ],
             "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env.local",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
                 "REDIS_URL": "redis://localhost:6379/0"
             },
-            "preLaunchTask": "Redis: Start",
-            "postDebugTask": "Redis: Stop",
+            "preLaunchTask": "Dependencies: Start",
+            "postDebugTask": "Dependencies: Stop",
             "console": "integratedTerminal"
         },
         {
