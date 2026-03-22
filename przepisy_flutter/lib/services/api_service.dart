@@ -184,5 +184,17 @@ class ApiService {
       throw Exception('Błąd wyszukiwania przepisów');
     }
   }
+
+  Future<void> uploadRecipeFromUrl(String url) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/recipes/from_url'),
+      headers: _headers..addAll({'Content-Type': 'application/json; charset=UTF-8'}),
+      body: json.encode({'url': url}),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201 && response.statusCode != 202) {
+      throw Exception('Błąd podczas dodawania przepisu z URL: ${response.statusCode}');
+    }
+  }
 }
 

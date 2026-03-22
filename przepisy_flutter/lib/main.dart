@@ -5,6 +5,7 @@ import 'models/recipe.dart';
 import 'models/tag.dart';
 import 'pages/recipe_details_screen.dart';
 import 'pages/upload_recipe_screen.dart';
+import 'pages/url_upload_page.dart';
 
 import 'services/settings_service.dart';
 import 'pages/settings_page.dart';
@@ -59,6 +60,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   bool _isLoading = true;
   String? _error;
   Timer? _debounce;
+  bool _isFabExpanded = false;
 
   @override
   void initState() {
@@ -145,21 +147,55 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
           Expanded(child: _buildBody()),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
-          );
-
-          if (result == true) {
-            setState(() {
-              _isLoading = true;
-            });
-            _fetchData();
-          }
-        },
-        child: const Icon(Icons.add_a_photo),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_isFabExpanded) ...[
+            FloatingActionButton.small(
+              heroTag: 'btn_url',
+              onPressed: () async {
+                setState(() => _isFabExpanded = false);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UrlUploadPage()),
+                );
+                if (result == true) {
+                  setState(() => _isLoading = true);
+                  _fetchData();
+                }
+              },
+              backgroundColor: Colors.orange[100],
+              child: const Icon(Icons.link),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'btn_camera',
+              onPressed: () async {
+                setState(() => _isFabExpanded = false);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
+                );
+                if (result == true) {
+                  setState(() => _isLoading = true);
+                  _fetchData();
+                }
+              },
+              backgroundColor: Colors.orange[100],
+              child: const Icon(Icons.add_a_photo),
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _isFabExpanded = !_isFabExpanded;
+              });
+            },
+            child: Icon(_isFabExpanded ? Icons.close : Icons.add),
+          ),
+        ],
       ),
     );
   }
