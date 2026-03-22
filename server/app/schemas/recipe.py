@@ -1,5 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import Optional
+
+
+class RecipeUrlRequest(BaseModel):
+    url: HttpUrl
 
 
 class RecipeImageOut(BaseModel):

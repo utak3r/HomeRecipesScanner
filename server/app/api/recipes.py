@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.api.deps import get_db
-from app.schemas.recipe import RecipeOut, RecipeUpdate, RecipeListOut
+from app.schemas.recipe import RecipeOut, RecipeUpdate, RecipeListOut, RecipeUrlRequest
 from typing import List
 from sqlalchemy.orm import selectinload
 from app.api.auth import get_current_user
@@ -12,6 +12,7 @@ from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.db.models.tag import Tag
 from app.workers.ocr_tasks import process_recipe
+# We will import the new task below
 import structlog
 
 router = APIRouter(
@@ -92,6 +93,26 @@ async def upload_recipe(
     return {
         "recipe_id": recipe.id,
         "files_count": len(file_paths),
+        "status": "processing"
+    }
+
+@router.post("/from_url")
+async def extract_recipe_from_url(
+    req: RecipeUrlRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.workers.url_tasks import process_url_recipe
+    
+    recipe = Recipe(status="processing")
+    db.add(recipe)
+    await db.flush()
+    await db.commit()
+    
+    request_id = structlog.contextvars.get_contextvars().get("request_id")
+    process_url_recipe.delay(recipe.id, str(req.url), request_id=request_id)
+    
+    return {
+        "recipe_id": recipe.id,
         "status": "processing"
     }
 

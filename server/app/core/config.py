@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     
     # Storage settings
     STORAGE: Literal["local", "cloud"] = "local"
+    BASE_URL: str | None = None
     S3_BUCKET: str = "recipes-bucket"
     S3_ACCESS_KEY: str | None = None
     S3_SECRET_KEY: str | None = None

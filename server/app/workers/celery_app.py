@@ -16,11 +16,12 @@ celery_app = Celery(
     "ocr_tasks",
     broker=redis_url,
     backend=redis_url,
-    include=["app.workers.ocr_tasks"]
+    include=["app.workers.ocr_tasks", "app.workers.url_tasks"]
 )
 
 celery_app.conf.task_routes = {
-    "app.workers.ocr_tasks.*": {"queue": "ocr"}
+    "app.workers.ocr_tasks.*": {"queue": "ocr"},
+    "app.workers.url_tasks.*": {"queue": "url_tasks"}
 }
 
 celery_app.conf.update(

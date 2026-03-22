@@ -172,3 +172,72 @@ def ai_handwritten_text_recognition(image_paths: list[str]) -> str:
         processed_images.append(img)
     
     return ai_image_to_json(processed_images)
+
+
+def ai_extract_recipe_from_url_content(content: str) -> dict:
+    prompt = f"""
+Jesteś systemem eksperckim do analizy zrzutów tekstu ze stron kulinarnych.
+Otrzymasz tekst/HTML pobrany ze strony ze wspaniałym przepisem kulinarnym.
+
+Twoje zadania:
+1. Zrozumienie: Wyciągnij kluczowe dane przepisu: tytuł, składniki, kroki przygotowania, uwagi.
+2. LOKALIZACJA ZDJĘCIA: 
+   Znajdź URL zdjęcia głównego. Szukaj według priorytetu:
+   a) Pole "image" wewnątrz struktury JSON-LD (type: Recipe).
+   b) Atrybut "content" w metatagu <meta property="og:image">.
+   c) Tagi <img> znajdujące się w bezpośrednim sąsiedztwie tytułu przepisu (h1).
+   Zwróć TYLKO pełny, bezpośredni adres URL do pliku graficznego (jpg, png, webp).
+3. Strukturyzacja: Sformatuj wynik OD RAZU jako JSON.
+
+Zasady:
+- Zwróć WYŁĄCZNIE poprawny kod JSON.
+- Jeśli brak ilości przy składniku, wstaw pusty string "".
+- Bądź bardzo precyzyjny w wyciąganiu kroków przygotowania potrawy.
+
+Wymagana struktura JSON:
+{{
+  "title": "Tytuł przepisu",
+  "ingredients": [
+    {{"name": "nazwa składnika", "amount": "ilość i jednostka"}}
+  ],
+  "steps": [
+    "krok 1",
+    "krok 2"
+  ],
+  "notes": "wszelkie dodatkowe uwagi",
+  "image_url": "pełny url do pobrania zdjęcia potrawy (albo pusty string)"
+}}
+
+ZAWARTOŚĆ STRONY:
+{content}
+"""
+
+    client = get_gemini_client()
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json"
+    )
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=config
+        )
+        raw_json_text = response.text.strip()
+        raw_json_text = raw_json_text.replace("```json", "").replace("```", "")
+        
+        return json.loads(raw_json_text)
+    
+    except errors.APIError as e:
+        error_msg = str(e)
+        if "429" in error_msg or "quota" in error_msg.lower():
+            raise RecipeAIError("Gemini API queries limit exceeded. Wait a moment and try again.")
+        elif "401" in error_msg or "403" in error_msg or "API_KEY_INVALID" in error_msg:
+            raise RecipeAIError("Authorization error. Check your GEMINI_API_KEY.")
+        else:
+            raise RecipeAIError(f"Error on Google servers side: {error_msg}")
+    except json.JSONDecodeError:
+        raise RecipeAIError("AI responded with an invalid format (JSON expected).")
+    except Exception as e:
+        raise RecipeAIError(f"Unexpected error while communicating with AI: {str(e)}")
