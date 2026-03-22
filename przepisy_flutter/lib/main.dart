@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'services/api_service.dart';
 import 'models/recipe.dart';
 import 'models/tag.dart';
@@ -61,19 +63,84 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   String? _error;
   Timer? _debounce;
   bool _isFabExpanded = false;
+  StreamSubscription? _intentDataStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+
+    // Słuchanie udostępnianych treści, gdy aplikacja jest już w pamięci
+    _intentDataStreamSubscription =
+        ReceiveSharingIntent.instance.getMediaStream().listen((value) {
+      if (value.isNotEmpty) {
+        _handleSharedIntent(value);
+      }
+    }, onError: (err) {
+      print("getMediaStream error: $err");
+    });
+
+    // Obsługa treści przy starcie aplikacji (cold start)
+    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
+      if (value.isNotEmpty) {
+        _handleSharedIntent(value);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _intentDataStreamSubscription?.cancel();
     _statusTimer?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleSharedIntent(List<SharedMediaFile> media) {
+    if (!mounted || media.isEmpty) return;
+
+    // Sprawdzamy czy są zdjęcia
+    final images = media
+        .where((f) => f.type == SharedMediaType.image)
+        .map((f) => File(f.path))
+        .toList();
+
+    if (images.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UploadRecipeScreen(initialImages: images),
+        ),
+      ).then((result) {
+        if (result == true) {
+          setState(() => _isLoading = true);
+          _fetchData();
+        }
+      });
+      return;
+    }
+
+    // Sprawdzamy czy jest tekst / URL
+    final textFile = media.firstWhere(
+      (f) => f.type == SharedMediaType.text || f.type == SharedMediaType.url,
+      orElse: () => media.first,
+    );
+
+    if (textFile.type == SharedMediaType.text ||
+        textFile.type == SharedMediaType.url) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UrlUploadPage(initialUrl: textFile.path),
+        ),
+      ).then((result) {
+        if (result == true) {
+          setState(() => _isLoading = true);
+          _fetchData();
+        }
+      });
+    }
   }
 
   Future<void> _fetchData() async {

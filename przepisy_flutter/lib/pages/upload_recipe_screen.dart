@@ -5,16 +5,23 @@ import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 
 class UploadRecipeScreen extends StatefulWidget {
-  const UploadRecipeScreen({super.key});
+  final List<File>? initialImages;
+  const UploadRecipeScreen({super.key, this.initialImages});
 
   @override
   State<UploadRecipeScreen> createState() => _UploadRecipeScreenState();
 }
 
 class _UploadRecipeScreenState extends State<UploadRecipeScreen> {
-  final List<File> _selectedImages = [];
+  late final List<File> _selectedImages;
   final ImagePicker _picker = ImagePicker();
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedImages = widget.initialImages != null ? List.from(widget.initialImages!) : [];
+  }
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.camera);

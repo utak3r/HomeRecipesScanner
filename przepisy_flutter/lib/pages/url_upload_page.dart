@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class UrlUploadPage extends StatefulWidget {
-  const UrlUploadPage({super.key});
+  final String? initialUrl;
+  const UrlUploadPage({super.key, this.initialUrl});
 
   @override
   State<UrlUploadPage> createState() => _UrlUploadPageState();
 }
 
 class _UrlUploadPageState extends State<UrlUploadPage> {
-  final TextEditingController _urlController = TextEditingController();
+  late final TextEditingController _urlController;
   final ApiService _apiService = ApiService();
   bool _isSending = false;
   bool _isValid = false;
@@ -17,7 +18,9 @@ class _UrlUploadPageState extends State<UrlUploadPage> {
   @override
   void initState() {
     super.initState();
+    _urlController = TextEditingController(text: widget.initialUrl);
     _urlController.addListener(_validate);
+    _validate();
   }
 
   @override
