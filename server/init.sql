@@ -31,6 +31,7 @@ CREATE TABLE public.recipes (
     structured jsonb,
     language text DEFAULT 'pl',
     status text DEFAULT 'processing',
+    source text DEFAULT 'ocr',
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );

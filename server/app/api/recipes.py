@@ -41,6 +41,7 @@ def _format_recipe_list_item(r: Recipe, storage: StorageService) -> dict:
         "thumbnail_url": thumbnail_url,
         "short_text": short_text,
         "status": r.status,
+        "source": r.source,
         "tags": [{"id": t.id, "name": t.name} for t in r.tags]
     }
 
@@ -67,7 +68,7 @@ async def upload_recipe(
     storage: StorageService = Depends(get_storage)
 ):
 
-    recipe = Recipe(status="processing")
+    recipe = Recipe(status="processing", source="ocr")
     db.add(recipe)
     await db.flush()
 
@@ -103,7 +104,7 @@ async def extract_recipe_from_url(
 ):
     from app.workers.url_tasks import process_url_recipe
     
-    recipe = Recipe(status="processing")
+    recipe = Recipe(status="processing", source="url")
     db.add(recipe)
     await db.flush()
     await db.commit()
@@ -138,6 +139,7 @@ async def get_recipe(
         "title": recipe.title,
         "structured": recipe.structured,
         "status": recipe.status,
+        "source": recipe.source,
         "tags": [{"id": t.id, "name": t.name} for t in recipe.tags],
         "images": [
             {"id": img.id, "url": storage.get_url(img.file_path)}

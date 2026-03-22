@@ -61,7 +61,8 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
         id=1, 
         title="Zupa pomidorowa", 
         full_text="Pyszna zupa z pomidorów.",
-        status="new"
+        status="new",
+        source="ocr"
     )
 
 
@@ -75,7 +76,8 @@ async def test_list_recipes_with_data(async_client, mock_db_session):
         id=2, 
         title=None, 
         full_text=long_text,
-        status="processing"
+        status="processing",
+        source="ocr"
     )
 
 
@@ -119,7 +121,7 @@ async def test_get_recipe_not_found(async_client, mock_db_session):
 
 @pytest.mark.asyncio
 async def test_get_recipe_success(async_client, mock_db_session):
-    fake_recipe = Recipe(id=1, title="Testowy Przepis", full_text="Składniki...", status="processed")
+    fake_recipe = Recipe(id=1, title="Testowy Przepis", full_text="Składniki...", status="processed", source="ocr")
     
     mock_image = MagicMock()
     mock_image.id = 10
@@ -173,11 +175,11 @@ async def test_upload_recipe_multiple_files(mock_process_delay, async_client, mo
 
 @pytest.mark.asyncio
 async def test_search_recipes(async_client, mock_db_session):
-    recipe_1 = Recipe(id=1, title="Ciasto marchewkowe", status="new", full_text="Przepis na ciasto")
+    recipe_1 = Recipe(id=1, title="Ciasto marchewkowe", status="new", full_text="Przepis na ciasto", source="ocr")
     recipe_1.tags = [Tag(id=1, name="Słodkie")]
     recipe_1.images = []
     
-    recipe_2 = Recipe(id=2, title="Ciasto czekoladowe", status="processing", full_text="Pyszne ciasto")
+    recipe_2 = Recipe(id=2, title="Ciasto czekoladowe", status="processing", full_text="Pyszne ciasto", source="ocr")
     recipe_2.tags = []
     recipe_2.images = []
 
@@ -210,7 +212,8 @@ async def test_list_recipes_by_tag_success(async_client, mock_db_session):
         id=10, 
         title="Kurczak w sosie", 
         full_text="Instrukcja gotowania obiadu...",
-        status="new"
+        status="new",
+        source="ocr"
     )
 
 
@@ -246,7 +249,7 @@ async def test_list_recipes_by_tag_empty(async_client, mock_db_session):
 @pytest.mark.asyncio
 async def test_remove_tag_success(async_client, mock_db_session):
     tag_to_remove = Tag(id=5, name="Szybkie")
-    fake_recipe = Recipe(id=1, title="Test", tags=[tag_to_remove])
+    fake_recipe = Recipe(id=1, title="Test", tags=[tag_to_remove], source="ocr")
     
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = fake_recipe
@@ -291,7 +294,8 @@ async def test_update_recipe_success(async_client, mock_db_session):
         id=1, 
         title="Stary tytuł", 
         full_text="Stary tekst",
-        status="new"
+        status="new",
+        source="ocr"
     )
 
 

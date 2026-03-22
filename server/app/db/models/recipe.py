@@ -21,7 +21,7 @@ class Recipe(Base):
     structured: Mapped[dict | None] = mapped_column(JSONB)
 
     status: Mapped[str | None] = mapped_column(String, default="new")
-
+    source: Mapped[str] = mapped_column(Text, default="ocr")
     language: Mapped[str] = mapped_column(default="pl")
 
     created_at: Mapped[datetime] = mapped_column(

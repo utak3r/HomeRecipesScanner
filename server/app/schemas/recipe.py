@@ -28,6 +28,7 @@ class RecipeOut(BaseModel):
     structured: Optional[dict]
     images: list[RecipeImageOut]
     status: str
+    source: str
     tags: list[TagBasicOut] = []
 
     class Config:
@@ -50,6 +51,7 @@ class RecipeListOut(BaseModel):
     thumbnail_url: str
     short_text: str
     status: str
+    source: str
     tags: list[TagBasicOut] = []
 
 
