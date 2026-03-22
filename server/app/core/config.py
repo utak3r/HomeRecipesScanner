@@ -29,7 +29,13 @@ class Settings(BaseSettings):
     ALLOWED_USERS: str = ""
     GOOGLE_CLIENT_ID_WEB: str | None = None
     GOOGLE_CLIENT_ID_ANDROID: str | None = None
+    
+    DEBUG_AUTH_DISABLED: bool = False
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", ".env.local"), 
+        env_file_encoding="utf-8", 
+        extra="ignore"
+    )
 
 settings = Settings()
