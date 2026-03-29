@@ -1,3 +1,11 @@
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin;
+  END IF;
+END
+$$;
+
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgroonga;
 
@@ -23,6 +31,7 @@ CREATE TABLE public.recipes (
     structured jsonb,
     language text DEFAULT 'pl',
     status text DEFAULT 'processing',
+    source text DEFAULT 'ocr',
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );

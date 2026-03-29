@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-auth_scheme = HTTPBearer()
+auth_scheme = HTTPBearer(auto_error=False)
 
 class LoginRequest(BaseModel):
     id_token: str
@@ -58,7 +58,16 @@ async def login(data: LoginRequest):
             detail="Nieprawidłowy lub przedawniony token Google."
         )
 
-async def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+async def get_current_user(token: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
+    if settings.DEBUG_AUTH_DISABLED:
+        return {"email": "debug@local", "name": "Debug User"}
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Brak autoryzacji (wymagany token)."
+        )
+
     # 1. Try to verify as Backend JWT
     try:
         payload = jwt.decode(

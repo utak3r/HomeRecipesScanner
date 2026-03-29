@@ -60,9 +60,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Redis: Start",
+            "label": "Dependencies: Start",
             "type": "shell",
-            "command": "docker-compose up -d redis",
+            "command": "docker-compose up -d redis db",
             "group": "none",
             "presentation": {
                 "reveal": "silent",
@@ -71,9 +71,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Redis: Stop",
+            "label": "Dependencies: Stop",
             "type": "shell",
-            "command": "docker-compose stop redis",
+            "command": "docker-compose stop redis db",
             "group": "none",
             "presentation": {
                 "reveal": "silent",

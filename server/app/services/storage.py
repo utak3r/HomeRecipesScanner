@@ -63,9 +63,11 @@ class LocalStorageService:
         return os.path.join(self.upload_dir, name).replace("\\", "/")
 
     def get_url(self, file_path: str) -> str:
-        if not file_path.startswith("/"):
-            return f"/{file_path}"
-        return file_path
+        url = file_path if file_path.startswith("/") else f"/{file_path}"
+        if settings.STORAGE == "local" and settings.BASE_URL:
+            base = settings.BASE_URL.rstrip("/")
+            return f"{base}{url}"
+        return url
 
     async def get_local_path(self, file_path: str) -> str:
         # For local storage, it's already local

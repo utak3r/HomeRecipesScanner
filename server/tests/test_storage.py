@@ -42,6 +42,31 @@ async def test_local_storage_save(local_storage):
     
     thumb_path = path.replace("test_uploads/", "test_uploads/thumbs/")
     assert os.path.exists(thumb_path)
+    
+def test_local_storage_get_url_with_base_url():
+    from app.core.config import settings
+    original_base_url = settings.BASE_URL
+    original_storage = settings.STORAGE
+    
+    try:
+        settings.BASE_URL = "http://localhost:8000"
+        settings.STORAGE = "local"
+        service = LocalStorageService()
+        
+        url = service.get_url("uploads/test.jpg")
+        assert url == "http://localhost:8000/uploads/test.jpg"
+        
+        url = service.get_url("/uploads/test.jpg")
+        assert url == "http://localhost:8000/uploads/test.jpg"
+        
+        # Test with trailing slash in BASE_URL
+        settings.BASE_URL = "http://localhost:8000/"
+        url = service.get_url("uploads/test.jpg")
+        assert url == "http://localhost:8000/uploads/test.jpg"
+        
+    finally:
+        settings.BASE_URL = original_base_url
+        settings.STORAGE = original_storage
 
 @mock_aws
 def test_s3_storage_save_sync():

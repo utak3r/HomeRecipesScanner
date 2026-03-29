@@ -13,6 +13,25 @@ services:
     ports:
       - "6379:6379"
 
+  # Database
+  db:
+    build: 
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: recipes_db
+    restart: always
+    env_file: .env.local
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Main application (FastAPI)
   web:
     build: .
@@ -36,13 +55,15 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      db:
+        condition: service_healthy
 
   # Celery worker
   worker:
     build: .
     image: utak3r/home-recipes-worker:debug
     container_name: home-recipes-worker
-    command: celery -A app.workers.celery_app worker -Q ocr --loglevel=info
+    command: celery -A app.workers.celery_app worker -Q ocr,url_tasks --loglevel=info
     ports:
       - "5679:5679" # debugpy
     healthcheck:
@@ -59,3 +80,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

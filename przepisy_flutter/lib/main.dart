@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'services/api_service.dart';
 import 'models/recipe.dart';
 import 'models/tag.dart';
 import 'pages/recipe_details_screen.dart';
 import 'pages/upload_recipe_screen.dart';
+import 'pages/url_upload_page.dart';
 
 import 'services/settings_service.dart';
 import 'pages/settings_page.dart';
@@ -59,19 +62,85 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   bool _isLoading = true;
   String? _error;
   Timer? _debounce;
+  bool _isFabExpanded = false;
+  StreamSubscription? _intentDataStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+
+    // Słuchanie udostępnianych treści, gdy aplikacja jest już w pamięci
+    _intentDataStreamSubscription =
+        ReceiveSharingIntent.instance.getMediaStream().listen((value) {
+      if (value.isNotEmpty) {
+        _handleSharedIntent(value);
+      }
+    }, onError: (err) {
+      print("getMediaStream error: $err");
+    });
+
+    // Obsługa treści przy starcie aplikacji (cold start)
+    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
+      if (value.isNotEmpty) {
+        _handleSharedIntent(value);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _intentDataStreamSubscription?.cancel();
     _statusTimer?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleSharedIntent(List<SharedMediaFile> media) {
+    if (!mounted || media.isEmpty) return;
+
+    // Sprawdzamy czy są zdjęcia
+    final images = media
+        .where((f) => f.type == SharedMediaType.image)
+        .map((f) => File(f.path))
+        .toList();
+
+    if (images.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UploadRecipeScreen(initialImages: images),
+        ),
+      ).then((result) {
+        if (result == true) {
+          setState(() => _isLoading = true);
+          _fetchData();
+        }
+      });
+      return;
+    }
+
+    // Sprawdzamy czy jest tekst / URL
+    final textFile = media.firstWhere(
+      (f) => f.type == SharedMediaType.text || f.type == SharedMediaType.url,
+      orElse: () => media.first,
+    );
+
+    if (textFile.type == SharedMediaType.text ||
+        textFile.type == SharedMediaType.url) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UrlUploadPage(initialUrl: textFile.path),
+        ),
+      ).then((result) {
+        if (result == true) {
+          setState(() => _isLoading = true);
+          _fetchData();
+        }
+      });
+    }
   }
 
   Future<void> _fetchData() async {
@@ -145,21 +214,55 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
           Expanded(child: _buildBody()),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
-          );
-
-          if (result == true) {
-            setState(() {
-              _isLoading = true;
-            });
-            _fetchData();
-          }
-        },
-        child: const Icon(Icons.add_a_photo),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_isFabExpanded) ...[
+            FloatingActionButton.small(
+              heroTag: 'btn_url',
+              onPressed: () async {
+                setState(() => _isFabExpanded = false);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UrlUploadPage()),
+                );
+                if (result == true) {
+                  setState(() => _isLoading = true);
+                  _fetchData();
+                }
+              },
+              backgroundColor: Colors.orange[100],
+              child: const Icon(Icons.link),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'btn_camera',
+              onPressed: () async {
+                setState(() => _isFabExpanded = false);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UploadRecipeScreen()),
+                );
+                if (result == true) {
+                  setState(() => _isLoading = true);
+                  _fetchData();
+                }
+              },
+              backgroundColor: Colors.orange[100],
+              child: const Icon(Icons.add_a_photo),
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _isFabExpanded = !_isFabExpanded;
+              });
+            },
+            child: Icon(_isFabExpanded ? Icons.close : Icons.add),
+          ),
+        ],
       ),
     );
   }

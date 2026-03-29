@@ -1,5 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import Optional
+
+
+class RecipeUrlRequest(BaseModel):
+    url: HttpUrl
 
 
 class RecipeImageOut(BaseModel):
@@ -24,6 +28,7 @@ class RecipeOut(BaseModel):
     structured: Optional[dict]
     images: list[RecipeImageOut]
     status: str
+    source: str
     tags: list[TagBasicOut] = []
 
     class Config:
@@ -46,6 +51,7 @@ class RecipeListOut(BaseModel):
     thumbnail_url: str
     short_text: str
     status: str
+    source: str
     tags: list[TagBasicOut] = []
 
 

@@ -19,10 +19,10 @@ class AuthService {
   static const String _backendTokenKey = 'auth_backend_token';
 
   Future<void> init() async {
-    final clientId = dotenv.env['GOOGLE_CLIENT_ID_ANDROID'];
+    final clientId = dotenv.get('GOOGLE_CLIENT_ID_ANDROID', fallback: '');
     _googleSignIn = GoogleSignIn(
       clientId: clientId,
-      scopes: ['email', 'openid', 'profile'],
+      scopes: <String>['email', 'openid', 'profile'],
     );
 
     final prefs = await SharedPreferences.getInstance();
