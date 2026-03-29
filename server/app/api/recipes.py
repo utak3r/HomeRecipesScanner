@@ -12,6 +12,8 @@ from app.db.models.recipe import Recipe
 from app.db.models.image import RecipeImage
 from app.db.models.tag import Tag
 from app.workers.ocr_tasks import process_recipe
+from app.workers.url_tasks import process_url_recipe
+
 # We will import the new task below
 import structlog
 
@@ -102,8 +104,6 @@ async def extract_recipe_from_url(
     req: RecipeUrlRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    from app.workers.url_tasks import process_url_recipe
-    
     recipe = Recipe(status="processing", source=str(req.url))
     db.add(recipe)
     await db.flush()
@@ -238,15 +238,23 @@ async def reprocess_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    if not recipe.images:
+    if not recipe.images and recipe.source == "ocr":
         raise HTTPException(status_code=400, detail="No images attached to this recipe")
+
+    if recipe.source == "":
+        raise HTTPException(status_code=400, detail="Recipe has unknown source")
 
     recipe.status = "processing"
     await db.commit()
 
-    file_paths = [img.file_path for img in recipe.images]
-    request_id = structlog.contextvars.get_contextvars().get("request_id")
-    process_recipe.delay(recipe.id, file_paths, request_id=request_id)
+    if recipe.source == "ocr":
+        file_paths = [img.file_path for img in recipe.images]
+        request_id = structlog.contextvars.get_contextvars().get("request_id")
+        process_recipe.delay(recipe.id, file_paths, request_id=request_id)
+    else:
+        request_id = structlog.contextvars.get_contextvars().get("request_id")
+        process_url_recipe.delay(recipe.id, recipe.source, request_id=request_id)
+
 
     return {
         "recipe_id": recipe.id,
