@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown, Tag as TagIcon, Plus, Check } from 'lucide-react';
+import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown, Tag as TagIcon, Plus, Check, Copy } from 'lucide-react';
 import { useAuth } from '../components/AuthContext';
 
 export const RecipeDetail = () => {
@@ -167,6 +167,47 @@ export const RecipeDetail = () => {
     }
   };
 
+  const handleCopyAsMarkdown = () => {
+    if (!recipe) return;
+    
+    const s = recipe.structured;
+    const title = recipe.title || s?.title || "Bez tytułu";
+    let markdown = `# ${title}\n\n`;
+    
+    if (recipe.short_text) {
+      markdown += `${recipe.short_text}\n\n`;
+    }
+    
+    if (s?.ingredients && s.ingredients.length > 0) {
+      markdown += `## Składniki\n`;
+      s.ingredients.forEach(ing => {
+        markdown += `- ${ing.name}${ing.amount ? `: ${ing.amount}` : ''}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    if (s?.steps && s.steps.length > 0) {
+      markdown += `## Sposób przygotowania\n`;
+      s.steps.forEach((step, idx) => {
+        markdown += `${idx + 1}. ${step}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    if (s?.notes) {
+      markdown += `## Wskazówki\n${s.notes}\n`;
+    }
+    
+    navigator.clipboard.writeText(markdown)
+      .then(() => alert('Przepis skopiowany jako Markdown!'))
+      .catch(err => {
+        console.error('Failed to copy markdown:', err);
+        alert('Nie udało się skopiować przepisu.');
+      });
+    
+    setIsMenuOpen(false);
+  };
+
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval>;
     
@@ -289,6 +330,13 @@ export const RecipeDetail = () => {
                   >
                     <Edit3 className="w-4 h-4 mr-2 flex-shrink-0" />
                     Edytuj treść przepisu
+                  </button>
+                  <button
+                    onClick={handleCopyAsMarkdown}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors font-medium border-b border-gray-100"
+                  >
+                    <Copy className="w-4 h-4 mr-2 flex-shrink-0" />
+                    Kopiuj jako Markdown
                   </button>
                   <button
                     onClick={() => {
