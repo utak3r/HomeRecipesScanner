@@ -20,8 +20,8 @@ export const RecipeList = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
       {recipes.map((recipe) => (
-        <Link 
-          key={recipe.id} 
+        <Link
+          key={recipe.id}
           to={`/recipe/${recipe.id}`}
           className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lift transition-all duration-300 border border-gray-100 hover:-translate-y-1"
         >
@@ -39,7 +39,7 @@ export const RecipeList = () => {
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            
+
             {/* Status Badges */}
             {recipe.status === 'failed' && (
               <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-full flex items-center space-x-1.5 shadow-lg z-10 animate-in fade-in zoom-in duration-300">
@@ -63,7 +63,7 @@ export const RecipeList = () => {
             <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-grow">
               {recipe.short_text || "Brak krótkiego opisu."}
             </p>
-            
+
             <div className="mt-auto pt-4 border-t border-gray-100 flex items-center text-sm font-medium text-accent">
               ZOBACZ PRZEPIS <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
             </div>

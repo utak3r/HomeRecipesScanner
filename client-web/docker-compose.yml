@@ -5,8 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VITE_SOURCEMAP=${VITE_SOURCEMAP:-false}
     ports:
       - "3000:80"
+    env_file:
+      - .env
     environment:
       - VITE_API_URL=${VITE_API_URL}
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}

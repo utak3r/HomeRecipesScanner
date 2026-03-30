@@ -14,9 +14,25 @@
       }
     },
     {
-      "label": "Podnieś lokalnego dockera",
+      "label": "Zbuduj i podnieś lokalnego dockera",
       "type": "shell",
-      "command": "docker-compose up --build",
+      "command": "docker-compose up -d --build",
+      "options": {
+        "env": {
+          "VITE_SOURCEMAP": "true"
+        }
+      },
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zatrzymaj lokalnego dockera",
+      "type": "shell",
+      "command": "docker-compose down",
       "group": "none",
       "presentation": {
         "reveal": "always",

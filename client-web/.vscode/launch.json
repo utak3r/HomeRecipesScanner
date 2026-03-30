@@ -8,7 +8,20 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
-      "preLaunchTask": "npm: dev"
+      "preLaunchTask": "npm: dev",
+      "userDataDir": false
+    },
+    {
+      "name": "Otwórz Docker (bez debugowania)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-Command",
+        "start http://localhost:3000"
+      ],
+      "preLaunchTask": "Zbuduj i podnieś lokalnego dockera",
+      "console": "internalConsole"
     },
     {
       "type": "chrome",
@@ -16,7 +29,20 @@
       "name": "Launch via Nginx (Docker)",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}",
-      "preLaunchTask": "docker-compose: up"
+      "preLaunchTask": "Zbuduj i podnieś lokalnego dockera",
+      "postDebugTask": "Zatrzymaj lokalnego dockera",
+      "userDataDir": false
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Docker: Build & Debug (Chrome)",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Zbuduj i podnieś lokalnego dockera",
+      "postDebugTask": "Zatrzymaj lokalnego dockera",
+      "sourceMaps": true,
+      "userDataDir": false
     }
   ]
 }
