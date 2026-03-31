@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Recipe } from '../types/recipe';
-import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown, Tag as TagIcon, Plus, Check, Copy } from 'lucide-react';
+import { ArrowLeft, ChefHat, Info, Maximize2, MoreVertical, Trash2, AlertTriangle, X, Pencil, RefreshCw, Edit3, PlusCircle, ChevronUp, ChevronDown, Tag as TagIcon, Plus, Check, Copy, FileText } from 'lucide-react';
 import { useAuth } from '../components/AuthContext';
 
 export const RecipeDetail = () => {
@@ -24,13 +24,14 @@ export const RecipeDetail = () => {
   const [showEditStructuredModal, setShowEditStructuredModal] = useState(false);
   const [editStructured, setEditStructured] = useState<Recipe['structured'] | null>(null);
   const [isSavingStructured, setIsSavingStructured] = useState(false);
-  
+
   const [showTagEdit, setShowTagEdit] = useState(false);
-  const [allTags, setAllTags] = useState<{id: number, name: string}[]>([]);
+  const [allTags, setAllTags] = useState<{ id: number, name: string }[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
-  
+
   const menuRef = useRef<HTMLDivElement>(null);
+  const recipeContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,7 +54,7 @@ export const RecipeDetail = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    
+
     // Fetch all tags for the selector
     if (isAuthenticated) {
       api.get('/tags/')
@@ -81,10 +82,10 @@ export const RecipeDetail = () => {
     try {
       setIsEditingTitle(true);
       await api.put(`/recipes/${id}`, { title: editTitleValue });
-      
+
       const res = await api.get(`/recipes/${id}`);
       setRecipe(res.data);
-      
+
       setShowEditTitleModal(false);
     } catch (error) {
       console.error('Failed to update title:', error);
@@ -112,7 +113,7 @@ export const RecipeDetail = () => {
 
     try {
       setIsSavingStructured(true);
-      
+
       // Filtrowanie pustych składników i kroków
       const cleanedStructured = {
         ...editStructured,
@@ -121,10 +122,10 @@ export const RecipeDetail = () => {
       };
 
       await api.put(`/recipes/${id}`, { structured: cleanedStructured });
-      
+
       const res = await api.get(`/recipes/${id}`);
       setRecipe(res.data);
-      
+
       setShowEditStructuredModal(false);
     } catch (error) {
       console.error('Failed to update structured content:', error);
@@ -142,7 +143,7 @@ export const RecipeDetail = () => {
       const res = await api.get(`/recipes/${id}`);
       setRecipe(res.data);
       setNewTagName('');
-      
+
       // Update allTags if it's a new tag
       const tagExists = allTags.some(t => t.name.toLowerCase() === tagName.trim().toLowerCase());
       if (!tagExists) {
@@ -169,15 +170,15 @@ export const RecipeDetail = () => {
 
   const handleCopyAsMarkdown = () => {
     if (!recipe) return;
-    
+
     const s = recipe.structured;
     const title = recipe.title || s?.title || "Bez tytułu";
     let markdown = `# ${title}\n\n`;
-    
+
     if (recipe.short_text) {
       markdown += `${recipe.short_text}\n\n`;
     }
-    
+
     if (s?.ingredients && s.ingredients.length > 0) {
       markdown += `## Składniki\n`;
       s.ingredients.forEach(ing => {
@@ -185,7 +186,7 @@ export const RecipeDetail = () => {
       });
       markdown += `\n`;
     }
-    
+
     if (s?.steps && s.steps.length > 0) {
       markdown += `## Sposób przygotowania\n`;
       s.steps.forEach((step, idx) => {
@@ -193,24 +194,32 @@ export const RecipeDetail = () => {
       });
       markdown += `\n`;
     }
-    
+
     if (s?.notes) {
       markdown += `## Wskazówki\n${s.notes}\n`;
     }
-    
+
     navigator.clipboard.writeText(markdown)
       .then(() => alert('Przepis skopiowany jako Markdown!'))
       .catch(err => {
         console.error('Failed to copy markdown:', err);
         alert('Nie udało się skopiować przepisu.');
       });
-    
+
     setIsMenuOpen(false);
+  };
+
+  const handleDownloadPDF = () => {
+    setIsMenuOpen(false);
+    // Simple window.print() triggered after menu closes
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval>;
-    
+
     if (recipe?.status === 'processing' || recipe?.status === 'pending') {
       intervalId = setInterval(async () => {
         try {
@@ -256,8 +265,8 @@ export const RecipeDetail = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Ups! Coś poszło nie tak</h2>
           <p className="text-gray-500 max-w-md">{error}</p>
         </div>
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center px-6 py-3 rounded-xl font-medium text-white bg-accent hover:bg-accent/90 transition-colors shadow-sm shadow-accent/30"
         >
           Wróć do listy przepisów
@@ -279,26 +288,152 @@ export const RecipeDetail = () => {
   }
 
   const s = recipe.structured;
+  const recipeTitle = recipe.title || s?.title || "Przepis bez tytułu";
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-24">
+    <div className="min-h-screen bg-[#F8F9FA] pb-24 recipe-detail-root">
+      <style>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 10mm !important;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .recipe-detail-root, .hero-header, .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+            width: 100% !important;
+            position: static !important;
+            display: block !important;
+            min-height: 0 !important;
+            height: auto !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+          .hero-header *, .main-content * {
+            padding: 0 !important;
+            margin: 0 !important;
+            position: static !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            break-inside: auto !important;
+          }
+          /* Re-apply spacing and prevent breaks directly after headings */
+          .recipe-detail-root h1 { 
+            font-size: 24pt !important; 
+            margin-top: 0 !important;
+            margin-bottom: 12pt !important; 
+            font-weight: bold !important; 
+            display: block !important;
+            color: black !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+          .recipe-detail-root h2 { 
+            font-size: 16pt !important; 
+            margin-top: 15pt !important; 
+            margin-bottom: 6pt !important; 
+            border-bottom: 1pt solid #eee !important; 
+            padding-bottom: 2pt !important;
+            display: block !important;
+            color: black !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+          .recipe-detail-root p, .recipe-detail-root li { 
+            font-size: 11pt !important; 
+            margin-bottom: 6pt !important; 
+            display: block !important;
+            color: #111 !important;
+          }
+          
+          /* Ingredients specific layout */
+          .main-content li {
+            margin-bottom: 3pt !important;
+          }
+          .main-content li > div, .main-content li > div > span {
+            display: inline !important;
+            margin-right: 0.5ch !important;
+            color: #111 !important;
+          }
+          .main-content li > div > span:last-child {
+            font-weight: bold !important;
+            color: #C2410C !important;
+          }
+
+          /* Step row vertical spacing */
+          .main-content div.group {
+            margin-top: 16pt !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+
+          /* Step markers */
+          .step-number {
+            display: block !important;
+            font-weight: bold !important;
+            font-size: 11pt !important;
+            margin: 0 !important;
+            color: black !important;
+            flex-shrink: 0 !important;
+          }
+          .step-number::before { content: "Krok " !important; }
+          .step-number div { 
+            display: inline !important; 
+            font-size: 16pt !important;
+            font-weight: 900 !important;
+          }
+          .main-content div.group p {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* Hiding elements */
+          .no-print, .no-print *, button, nav, [role="dialog"], .fixed, .absolute {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
       {/* Premium Hero Header */}
-      <div className="relative w-full bg-white border-b border-gray-100 pt-12 pb-20">
+      <div className="relative w-full bg-white border-b border-gray-100 pt-12 pb-20 hero-header">
         <div className="absolute inset-0 bg-gradient-to-b from-brand-50/50 to-transparent"></div>
-        
+
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex justify-between items-start mb-12">
-            <Link 
-              to="/" 
-              className="inline-flex items-center text-sm text-gray-400 hover:text-accent font-semibold tracking-wide uppercase transition-colors group"
+            <Link
+              to="/"
+              data-html2canvas-ignore="true"
+              className="inline-flex items-center text-sm text-gray-400 hover:text-accent font-semibold tracking-wide uppercase transition-colors group no-print"
             >
               <ArrowLeft className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" />
               Wróć do przepisów
             </Link>
 
             {/* Dropdown Menu */}
-            <div className="relative" ref={menuRef}>
-              <button 
+            <div className="relative no-print" ref={menuRef} data-html2canvas-ignore="true">
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/50 text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20"
                 aria-label="Opcje przepisu"
@@ -339,6 +474,13 @@ export const RecipeDetail = () => {
                     Kopiuj jako Markdown
                   </button>
                   <button
+                    onClick={handleDownloadPDF}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors font-medium border-b border-gray-100"
+                  >
+                    <FileText className="w-4 h-4 mr-2 flex-shrink-0" />
+                    Pobierz jako PDF
+                  </button>
+                  <button
                     onClick={() => {
                       setIsMenuOpen(false);
                       setShowReprocessConfirm(true);
@@ -365,7 +507,7 @@ export const RecipeDetail = () => {
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center justify-center mb-6">
+              <div className="inline-flex items-center justify-center mb-6 no-print">
                 <div className="bg-white p-2 rounded-[1.25rem] shadow-sm border border-brand-100 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
                   <img src="/ikonka_1024px.png" alt="Logo przepisu" className="w-14 h-14 rounded-xl object-cover" />
                 </div>
@@ -380,15 +522,15 @@ export const RecipeDetail = () => {
               )}
 
               {/* Tags Section */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 no-print">
                 {recipe.tags?.map(tag => (
-                  <div 
+                  <div
                     key={tag.id}
                     className="group/tag flex items-center bg-white border border-brand-100 rounded-full pl-3 pr-1 py-1 shadow-sm hover:shadow-md transition-all"
                   >
                     <TagIcon size={14} className="text-brand-500 mr-2" />
                     <span className="text-sm font-semibold text-gray-700 mr-2">{tag.name}</span>
-                    <button 
+                    <button
                       onClick={() => handleRemoveTag(tag.id)}
                       className="p-1 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
                       title="Usuń tag z przepisu"
@@ -397,10 +539,10 @@ export const RecipeDetail = () => {
                     </button>
                   </div>
                 ))}
-                
+
                 <div className="relative">
                   {!showTagEdit ? (
-                    <button 
+                    <button
                       onClick={() => setShowTagEdit(true)}
                       className="inline-flex items-center px-4 py-2 rounded-full border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-accent/50 hover:text-accent transition-all"
                     >
@@ -430,14 +572,14 @@ export const RecipeDetail = () => {
                           <option key={t.id} value={t.name} />
                         ))}
                       </datalist>
-                      <button 
+                      <button
                         onClick={() => handleAddTag(newTagName)}
                         disabled={isAddingTag || !newTagName.trim()}
                         className="p-1.5 bg-accent text-white rounded-full shadow-sm hover:bg-accent/90 disabled:opacity-50"
                       >
                         {isAddingTag ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setShowTagEdit(false);
                           setNewTagName('');
@@ -456,19 +598,19 @@ export const RecipeDetail = () => {
       </div>
 
       {/* Main Content Layout */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20 main-content">
         {(recipe.status === 'processing' || recipe.status === 'pending') && (
-          <div className="mb-8 p-6 bg-brand-50 border border-brand-200 rounded-[2rem] flex items-center space-x-4 text-brand-800 shadow-sm animate-pulse">
+          <div className="mb-8 p-6 bg-brand-50 border border-brand-200 rounded-[2rem] flex items-center space-x-4 text-brand-800 shadow-sm animate-pulse no-print">
             <RefreshCw className="w-6 h-6 animate-spin flex-shrink-0 text-brand-600" />
             <span className="font-medium text-lg">Receptura jest rozpoznawana. To może zająć kilkadziesiąt sekund...</span>
           </div>
         )}
 
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
-          
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 relative">
+
           {/* Ingredients Sidebar */}
-          <div className="lg:col-span-5 xl:col-span-4">
-            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 sticky top-8">
+          <div className="lg:col-span-12 xl:col-span-12 lg:col-span-5 xl:col-span-4 self-start lg:sticky lg:top-8">
+            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
               <h2 className="text-2xl font-bold text-gray-900 mb-8 pl-4">
                 Składniki
               </h2>
@@ -494,21 +636,21 @@ export const RecipeDetail = () => {
           </div>
 
           {/* Preparation Steps */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+          <div className="lg:col-span-12 xl:col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col gap-8">
             <div className="bg-white rounded-[2rem] p-8 md:p-10 shadow-sm border border-gray-100">
-              <div className="space-y-12">
+              <div className="space-y-12 text-gray-700 leading-relaxed font-medium">
                 {s?.steps?.map((step, idx) => (
                   <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 group">
+                    {/* Step Number moved before description for print/stacking */}
+                    <div className="flex-shrink-0 self-end sm:self-center step-number">
+                      <div className="w-[4.5rem] h-[4.5rem] rounded-[1.5rem] bg-brand-50 border border-brand-100 text-brand-800 flex items-center justify-center font-extrabold text-3xl shadow-sm">
+                        {idx + 1}
+                      </div>
+                    </div>
                     <div className="flex-grow sm:pr-8">
                       <p className="text-gray-800 leading-relaxed text-lg font-medium">
                         {step}
                       </p>
-                    </div>
-                    {/* Step Number on the Right (V2 Layout) */}
-                    <div className="flex-shrink-0 self-end sm:self-center">
-                      <div className="w-[4.5rem] h-[4.5rem] rounded-[1.5rem] bg-brand-50 border border-brand-100 text-brand-800 flex items-center justify-center font-extrabold text-3xl shadow-sm">
-                        {idx + 1}
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -521,7 +663,7 @@ export const RecipeDetail = () => {
             {/* Author Notes Card */}
             {s?.notes && (
               <div className="bg-gradient-to-br from-brand-50 to-white rounded-3xl p-8 border border-brand-100 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 right-0 p-6 text-brand-200 opacity-30">
+                <div className="no-print absolute top-0 right-0 p-6 text-brand-200 opacity-30">
                   <Info size={100} />
                 </div>
                 <div className="relative z-10">
@@ -529,7 +671,7 @@ export const RecipeDetail = () => {
                     Wskazówki autora
                   </h3>
                   <p className="text-gray-800 text-lg font-light italic leading-relaxed max-w-2xl">
-                    "{s.notes}"
+                    \"{s.notes}\"
                   </p>
                 </div>
               </div>
@@ -539,14 +681,14 @@ export const RecipeDetail = () => {
 
         {/* Gallery / Scans */}
         {recipe.images && recipe.images.length > 0 && (
-          <div className="mt-16">
+          <div className="mt-16 no-print">
             <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center justify-center">
               Oryginalne Skany
             </h2>
             <div className="flex flex-wrap justify-center gap-8">
               {recipe.images.map((img) => (
                 <div key={img.id} className="w-full max-w-[500px]">
-                  <button 
+                  <button
                     onClick={() => setSelectedImage(img.url)}
                     className="group block w-full relative rounded-[2rem] overflow-hidden bg-white p-3 shadow-soft hover:shadow-lift transition-all duration-500 border border-gray-100 cursor-zoom-in text-left focus:outline-none focus:ring-4 focus:ring-accent/20"
                   >
@@ -573,12 +715,11 @@ export const RecipeDetail = () => {
 
       {/* Image Lightbox Overlay */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 md:p-8 backdrop-blur-sm transition-opacity"
           onClick={() => setSelectedImage(null)}
         >
-          {/* Close button that is clearly visible */}
-          <button 
+          <button
             className="absolute top-6 right-6 md:top-10 md:right-10 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md"
             onClick={(e) => {
               e.stopPropagation();
@@ -586,15 +727,14 @@ export const RecipeDetail = () => {
             }}
             aria-label="Zamknij"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
           </button>
-          
-          <img 
-            src={selectedImage} 
-            alt="Powiększony skan przepisu" 
+
+          <img
+            src={selectedImage}
+            alt="Powiększony skan przepisu"
             className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg shadow-2xl cursor-zoom-out"
             onClick={(e) => {
-              // Allow clicking the image itself to close
               e.stopPropagation();
               setSelectedImage(null);
             }}
@@ -606,13 +746,12 @@ export const RecipeDetail = () => {
       {showEditTitleModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setShowEditTitleModal(false)}
               className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            
             <div className="flex flex-col space-y-4 mt-2">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-10 h-10 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
@@ -620,7 +759,6 @@ export const RecipeDetail = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900">Edytuj tytuł</h3>
               </div>
-              
               <div className="space-y-2 mt-4">
                 <label className="text-sm font-medium text-gray-700">Tytuł przepisu</label>
                 <input
@@ -632,7 +770,6 @@ export const RecipeDetail = () => {
                   autoFocus
                 />
               </div>
-              
               <div className="flex w-full gap-4 mt-8 pt-4">
                 <button
                   onClick={() => setShowEditTitleModal(false)}
@@ -662,14 +799,13 @@ export const RecipeDetail = () => {
       {showReprocessConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => !isReprocessing && setShowReprocessConfirm(false)}
               className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
               disabled={isReprocessing}
             >
               <X className="w-5 h-5" />
             </button>
-            
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mb-2">
                 <RefreshCw className={`w-8 h-8 ${isReprocessing ? 'animate-spin' : ''}`} />
@@ -678,7 +814,6 @@ export const RecipeDetail = () => {
               <p className="text-gray-500 text-lg leading-relaxed">
                 Uwaga, wybranie tej opcji spowoduje <span className="font-semibold text-brand-600">nadpisanie wszystkich danych tekstowych!</span>
               </p>
-              
               <div className="flex w-full gap-4 mt-8 pt-4">
                 <button
                   onClick={() => setShowReprocessConfirm(false)}
@@ -708,23 +843,21 @@ export const RecipeDetail = () => {
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setShowDeleteConfirm(false)}
               className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-2">
                 <AlertTriangle className="w-8 h-8" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900">Usuń przepis</h3>
               <p className="text-gray-500 text-lg leading-relaxed">
-                Czy jesteś pewien, że chcesz usunąć przepis? <br/>
+                Czy jesteś pewien, że chcesz usunąć przepis? <br />
                 <span className="font-semibold text-red-500">Wszystkie dane zostaną utracone!</span>
               </p>
-              
               <div className="flex w-full gap-4 mt-8 pt-4">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
@@ -753,9 +886,7 @@ export const RecipeDetail = () => {
       {/* Edit Structured Content Modal */}
       {showEditStructuredModal && editStructured && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] p-8 rounded-t-[2rem] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden">
-            
-            {/* Modal Header */}
+          <div className="bg-white rounded-[2rem] p-8 max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden">
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
@@ -766,7 +897,7 @@ export const RecipeDetail = () => {
                   <p className="text-gray-500 text-sm">Popraw odczytane składniki i kroki wykonania.</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => !isSavingStructured && setShowEditStructuredModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                 disabled={isSavingStructured}
@@ -774,11 +905,7 @@ export const RecipeDetail = () => {
                 <X className="w-8 h-8" />
               </button>
             </div>
-            
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto pr-4 space-y-10 min-h-0 custom-scrollbar">
-              
-              {/* Ingredients Section */}
               <section>
                 <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                   <div className="w-2 h-6 bg-accent rounded-full mr-3"></div>
@@ -825,7 +952,8 @@ export const RecipeDetail = () => {
                         </button>
                         <button
                           onClick={() => {
-                            if (idx === (editStructured.ingredients?.length || 0) - 1) return;
+                            const ingredientsCount = editStructured.ingredients?.length || 0;
+                            if (idx === ingredientsCount - 1) return;
                             const newIngs = [...(editStructured.ingredients || [])];
                             [newIngs[idx + 1], newIngs[idx]] = [newIngs[idx], newIngs[idx + 1]];
                             setEditStructured({ ...editStructured, ingredients: newIngs });
@@ -861,8 +989,6 @@ export const RecipeDetail = () => {
                   </button>
                 </div>
               </section>
-
-              {/* Steps Section */}
               <section>
                 <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                   <div className="w-2 h-6 bg-brand-400 rounded-full mr-3"></div>
@@ -880,19 +1006,11 @@ export const RecipeDetail = () => {
                           const newSteps = [...(editStructured.steps || [])];
                           newSteps[idx] = e.target.value;
                           setEditStructured({ ...editStructured, steps: newSteps });
-                          
-                          // Proste auto-resize dla textarea
                           e.target.style.height = 'auto';
                           e.target.style.height = e.target.scrollHeight + 'px';
                         }}
                         className="flex-grow px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400 transition-all text-gray-800 min-h-[80px] resize-none overflow-hidden"
                         placeholder="Opisz ten krok..."
-                        onKeyDown={(e) => {
-                           if(e.currentTarget) {
-                             e.currentTarget.style.height = 'auto';
-                             e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
-                           }
-                        }}
                       />
                       <div className="flex flex-col gap-1 shrink-0 mt-1">
                         <button
@@ -910,7 +1028,8 @@ export const RecipeDetail = () => {
                         </button>
                         <button
                           onClick={() => {
-                            if (idx === (editStructured.steps?.length || 0) - 1) return;
+                            const stepsCount = editStructured.steps?.length || 0;
+                            if (idx === stepsCount - 1) return;
                             const newSteps = [...(editStructured.steps || [])];
                             [newSteps[idx + 1], newSteps[idx]] = [newSteps[idx], newSteps[idx + 1]];
                             setEditStructured({ ...editStructured, steps: newSteps });
@@ -946,8 +1065,6 @@ export const RecipeDetail = () => {
                   </button>
                 </div>
               </section>
-
-              {/* Notes Section */}
               <section>
                 <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                   <div className="w-2 h-6 bg-yellow-400 rounded-full mr-3"></div>
@@ -964,10 +1081,7 @@ export const RecipeDetail = () => {
                   placeholder="Dodatkowe informacje, sekrety kucharza..."
                 />
               </section>
-
             </div>
-
-            {/* Modal Footer / Actions */}
             <div className="mt-8 pt-6 border-t border-gray-100 flex gap-4 shrink-0">
               <button
                 onClick={() => setShowEditStructuredModal(false)}
@@ -988,7 +1102,6 @@ export const RecipeDetail = () => {
                 )}
               </button>
             </div>
-            
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-100">
-        <nav className="bg-orange-600 text-white p-4 shadow-md">
+        <nav className="bg-orange-600 text-white p-4 shadow-md no-print">
           <div className="container mx-auto flex items-center justify-between">
             <Link to="/" className="text-2xl font-bold flex items-center gap-3 group">
               <div className="bg-white p-0.5 rounded-xl shadow-sm group-hover:shadow-md transition-shadow">
